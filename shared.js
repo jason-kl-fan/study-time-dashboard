@@ -14,9 +14,9 @@ export const PROFILE_SESSION_KEY = 'study-time-profile-auth';
 export const ADMIN_PASSWORD_MIN_LENGTH = 6;
 
 const CATEGORY_LABELS = {
-  '念書': '念書 / Study',
-  '休閒': '休閒 / Leisure',
-  '玩遊戲': '玩遊戲 / Gaming'
+  '念書': '念書',
+  '休閒': '休閒',
+  '玩遊戲': '玩遊戲'
 };
 
 export function uid() {
@@ -54,8 +54,7 @@ export function personNames(people = []) {
 
 export function displayCategory(category) {
   if (CATEGORY_LABELS[category]) return CATEGORY_LABELS[category];
-  if (typeof category === 'string' && category.includes('/')) return category;
-  return `${category} / ${category}`;
+  return category;
 }
 
 export function formatDateTime(dateString) {
