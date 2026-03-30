@@ -285,11 +285,17 @@ clearDataBtn.addEventListener('click', async () => {
 (async function init() {
   try {
     await ensureRemoteState();
-    subscribeDashboard((state) => {
-      dashboardState = state;
-      setSyncStatus('雲端同步狀態：已連線 Cloud Sync Connected');
-      refreshAdmin();
-    });
+    subscribeDashboard(
+      (state) => {
+        dashboardState = state;
+        setSyncStatus('雲端同步狀態：已連線 Cloud Sync Connected');
+        refreshAdmin();
+      },
+      (error) => {
+        console.error(error);
+        setSyncStatus(`雲端同步狀態：${error.code || '連線失敗'}，請檢查 Firestore 是否已開啟`, false);
+      }
+    );
   } catch (error) {
     console.error(error);
     setSyncStatus('雲端同步狀態：連線失敗，請檢查 Firebase 設定', false);

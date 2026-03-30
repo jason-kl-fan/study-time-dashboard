@@ -43,17 +43,23 @@ export async function ensureRemoteState() {
   }
 }
 
-export function subscribeDashboard(callback) {
-  return onSnapshot(dashboardRef, (snap) => {
-    const data = snap.exists() ? snap.data() : defaultState;
-    callback({
-      people: normalizePeople(data.people || defaultState.people),
-      categories: data.categories || defaultState.categories,
-      records: data.records || [],
-      activeRecords: data.activeRecords || {},
-      updatedAt: data.updatedAt || null
-    });
-  });
+export function subscribeDashboard(callback, onError) {
+  return onSnapshot(
+    dashboardRef,
+    (snap) => {
+      const data = snap.exists() ? snap.data() : defaultState;
+      callback({
+        people: normalizePeople(data.people || defaultState.people),
+        categories: data.categories || defaultState.categories,
+        records: data.records || [],
+        activeRecords: data.activeRecords || {},
+        updatedAt: data.updatedAt || null
+      });
+    },
+    (error) => {
+      if (onError) onError(error);
+    }
+  );
 }
 
 export async function saveDashboardState(partialState) {
