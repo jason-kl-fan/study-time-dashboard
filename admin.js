@@ -6,8 +6,10 @@ import {
 import {
   formatDateTime,
   formatDuration,
+  formatDelta,
   toDatetimeLocalValue,
   getRangeStart,
+  getPreviousRangeStart,
   recalcDuration,
   aggregateByCategory,
   downloadBlob,
@@ -51,6 +53,7 @@ const adminLogoutBtn = document.getElementById('adminLogoutBtn');
 const rangeSelect = document.getElementById('rangeSelect');
 const statsPersonSelect = document.getElementById('statsPersonSelect');
 const statsCategorySelect = document.getElementById('statsCategorySelect');
+const compareModeSelect = document.getElementById('compareModeSelect');
 const summaryCards = document.getElementById('summaryCards');
 const recordsTableBody = document.getElementById('recordsTableBody');
 const newPersonInput = document.getElementById('newPersonInput');
@@ -83,6 +86,12 @@ function percentOf(value, total) {
   return `${Math.round((value / total) * 100)}%`;
 }
 
+function getRangeLabel(range, previous = false) {
+  if (range === 'day') return previous ? '昨天 / Previous Day' : '今天 / Current Day';
+  if (range === 'week') return previous ? '上週 / Previous Week' : '本週 / Current Week';
+  return previous ? '上月 / Previous Month' : '本月 / Current Month';
+}
+
 function isAdminUnlocked() {
   return hasAdminSession() && Boolean(normalizeSettings(dashboardState.settings).adminPassword);
 }
@@ -113,50 +122,116 @@ function renderTags() {
 }
 
 function collectStats() {
-  const rangeStart = getRangeStart(rangeSelect.value);
+  const range = rangeSelect.value;
+  const compareMode = compareModeSelect.value;
+  const rangeStart = getRangeStart(range);
+  const previousRangeStart = getPreviousRangeStart(range);
   const selectedPerson = statsPersonSelect.value;
   const selectedCategory = statsCategorySelect.value;
-  return dashboardState.records.filter((record) => new Date(record.startTime) >= rangeStart && (selectedPerson === 'all' || record.person === selectedPerson) && (selectedCategory === 'all' || record.category === selectedCategory));
+
+  const matchesFilters = (record) =>
+    (selectedPerson === 'all' || record.person === selectedPerson) &&
+    (selectedCategory === 'all' || record.category === selectedCategory);
+
+  const currentRecords = dashboardState.records.filter((record) => {
+    const start = new Date(record.startTime);
+    return start >= rangeStart && matchesFilters(record);
+  });
+
+  const previousRecords = compareMode === 'previous'
+    ? dashboardState.records.filter((record) => {
+        const start = new Date(record.startTime);
+        return start >= previousRangeStart && start < rangeStart && matchesFilters(record);
+      })
+    : [];
+
+  return { currentRecords, previousRecords, compareMode, range };
 }
 
-function renderSummary(records) {
-  const totalMinutes = records.reduce((sum, item) => sum + item.durationMinutes, 0);
-  const studyMinutes = records.filter((item) => item.category === '念書').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const leisureMinutes = records.filter((item) => item.category === '休閒').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const gameMinutes = records.filter((item) => item.category === '玩遊戲').reduce((sum, item) => sum + item.durationMinutes, 0);
+function renderSummary(currentRecords, previousRecords, compareMode, range) {
+  const totalMinutes = currentRecords.reduce((sum, item) => sum + item.durationMinutes, 0);
+  const previousTotalMinutes = previousRecords.reduce((sum, item) => sum + item.durationMinutes, 0);
+  const studyMinutes = currentRecords.filter((item) => item.category === '念書').reduce((sum, item) => sum + item.durationMinutes, 0);
+  const previousStudyMinutes = previousRecords.filter((item) => item.category === '念書').reduce((sum, item) => sum + item.durationMinutes, 0);
+  const leisureMinutes = currentRecords.filter((item) => item.category === '休閒').reduce((sum, item) => sum + item.durationMinutes, 0);
+  const gameMinutes = currentRecords.filter((item) => item.category === '玩遊戲').reduce((sum, item) => sum + item.durationMinutes, 0);
+  const previousLeisureMinutes = previousRecords.filter((item) => item.category === '休閒').reduce((sum, item) => sum + item.durationMinutes, 0);
+  const previousGameMinutes = previousRecords.filter((item) => item.category === '玩遊戲').reduce((sum, item) => sum + item.durationMinutes, 0);
+
   summaryCards.innerHTML = [
-    { label: '總統計時間 / Total Time', value: formatDuration(totalMinutes), sub: `${records.length} 筆紀錄 / records` },
-    { label: '念書時間 / Study Time', value: formatDuration(studyMinutes), sub: percentOf(studyMinutes, totalMinutes) },
-    { label: '休閒＋遊戲 / Leisure + Gaming', value: formatDuration(leisureMinutes + gameMinutes), sub: percentOf(leisureMinutes + gameMinutes, totalMinutes) }
+    {
+      label: '總統計時間 / Total Time',
+      value: formatDuration(totalMinutes),
+      sub: compareMode === 'previous' ? `相較${getRangeLabel(range, true)}：${formatDelta(totalMinutes - previousTotalMinutes)}` : `${currentRecords.length} 筆紀錄 / records`
+    },
+    {
+      label: '念書時間 / Study Time',
+      value: formatDuration(studyMinutes),
+      sub: compareMode === 'previous' ? `相較${getRangeLabel(range, true)}：${formatDelta(studyMinutes - previousStudyMinutes)}` : percentOf(studyMinutes, totalMinutes)
+    },
+    {
+      label: '休閒＋遊戲 / Leisure + Gaming',
+      value: formatDuration(leisureMinutes + gameMinutes),
+      sub: compareMode === 'previous'
+        ? `相較${getRangeLabel(range, true)}：${formatDelta(leisureMinutes + gameMinutes - previousLeisureMinutes - previousGameMinutes)}`
+        : percentOf(leisureMinutes + gameMinutes, totalMinutes)
+    }
   ].map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div><div class="summary-sub">${card.sub}</div></div>`).join('');
 }
 
-function renderCharts(records) {
+function renderCharts(currentRecords, previousRecords, compareMode, range) {
   const people = personNames(dashboardState.people);
   const categories = dashboardState.categories;
   const selectedPerson = statsPersonSelect.value;
-  const chartRecords = selectedPerson === 'all' ? records : records.filter((r) => r.person === selectedPerson);
-  const categoryTotals = aggregateByCategory(chartRecords, categories);
+  const chartCurrentRecords = selectedPerson === 'all' ? currentRecords : currentRecords.filter((r) => r.person === selectedPerson);
+  const chartPreviousRecords = selectedPerson === 'all' ? previousRecords : previousRecords.filter((r) => r.person === selectedPerson);
+  const categoryTotals = aggregateByCategory(chartCurrentRecords, categories);
+  const previousCategoryTotals = aggregateByCategory(chartPreviousRecords, categories);
+
   if (barChart) barChart.destroy();
   if (pieChart) pieChart.destroy();
+
   barChart = new Chart(document.getElementById('barChart'), {
     type: 'bar',
     data: {
       labels: categories.map(displayCategory),
-      datasets: people.map((person, index) => ({
-        label: person,
-        data: aggregateByCategory(records.filter((record) => record.person === person), categories),
-        backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
-        borderRadius: 10,
-        maxBarThickness: 34,
-        categoryPercentage: 0.66,
-        barPercentage: 0.76,
-        datalabels: {
-          display: false,
-          color: '#4b415f',
-          formatter: (value) => (value ? formatDuration(value) : '')
-        }
-      }))
+      datasets: compareMode === 'previous'
+        ? [
+            {
+              label: getRangeLabel(range, false),
+              data: categoryTotals,
+              backgroundColor: CHART_PALETTE[0],
+              borderRadius: 10,
+              maxBarThickness: 34,
+              categoryPercentage: 0.66,
+              barPercentage: 0.76,
+              datalabels: { display: false, color: '#4b415f', formatter: (value) => (value ? formatDuration(value) : '') }
+            },
+            {
+              label: getRangeLabel(range, true),
+              data: previousCategoryTotals,
+              backgroundColor: 'rgba(138, 168, 255, 0.72)',
+              borderRadius: 10,
+              maxBarThickness: 34,
+              categoryPercentage: 0.66,
+              barPercentage: 0.76,
+              datalabels: { display: false, color: '#4b415f', formatter: (value) => (value ? formatDuration(value) : '') }
+            }
+          ]
+        : people.map((person, index) => ({
+            label: person,
+            data: aggregateByCategory(currentRecords.filter((record) => record.person === person), categories),
+            backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
+            borderRadius: 10,
+            maxBarThickness: 34,
+            categoryPercentage: 0.66,
+            barPercentage: 0.76,
+            datalabels: {
+              display: false,
+              color: '#4b415f',
+              formatter: (value) => (value ? formatDuration(value) : '')
+            }
+          }))
     },
     options: {
       responsive: true,
@@ -213,10 +288,32 @@ function renderCharts(records) {
       }
     }
   });
+
   pieChart = new Chart(document.getElementById('pieChart'), {
     type: 'doughnut',
-    data: { labels: categories.map(displayCategory), datasets: [{ data: categoryTotals, backgroundColor: categories.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]), borderWidth: 0 }] },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' }, datalabels: { color: '#3d3552', font: { weight: '700', size: 12 }, formatter: (value, context) => { const total = context.dataset.data.reduce((sum, item) => sum + item, 0); if (!value || !total) return ''; return `${Math.round((value / total) * 100)}%\n${formatDuration(value)}`; } } } }
+    data: {
+      labels: categories.map(displayCategory),
+      datasets: [{
+        data: categoryTotals,
+        backgroundColor: categories.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]),
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' },
+        datalabels: {
+          color: '#3d3552',
+          font: { weight: '700', size: 12 },
+          formatter: (value, context) => {
+            const total = context.dataset.data.reduce((sum, item) => sum + item, 0);
+            if (!value || !total) return '';
+            return `${Math.round((value / total) * 100)}%\n${formatDuration(value)}`;
+          }
+        }
+      }
+    }
   });
 }
 
@@ -239,10 +336,10 @@ function renderRecordsTable(records) {
 }
 
 function renderAdminStats() {
-  const statsRecords = collectStats();
-  renderSummary(statsRecords);
-  renderCharts(statsRecords);
-  renderRecordsTable(statsRecords);
+  const { currentRecords, previousRecords, compareMode, range } = collectStats();
+  renderSummary(currentRecords, previousRecords, compareMode, range);
+  renderCharts(currentRecords, previousRecords, compareMode, range);
+  renderRecordsTable(currentRecords);
 }
 
 function refreshAdmin() {
@@ -412,6 +509,7 @@ async function init() {
   rangeSelect.addEventListener('change', refreshAdmin);
   statsPersonSelect.addEventListener('change', refreshAdmin);
   statsCategorySelect.addEventListener('change', refreshAdmin);
+  compareModeSelect.addEventListener('change', refreshAdmin);
   try {
     setDiagnostic('開始初始化 Firebase / Firestore...');
     await ensureRemoteState();

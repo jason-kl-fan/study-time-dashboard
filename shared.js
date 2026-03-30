@@ -76,6 +76,11 @@ export function formatDuration(minutes) {
   return `${hrs} 小時 ${mins} 分鐘 / ${hrs}h ${mins}m`;
 }
 
+export function formatDelta(value) {
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '±';
+  return `${sign}${formatDuration(Math.abs(value))}`;
+}
+
 export function toDatetimeLocalValue(dateString) {
   const date = new Date(dateString);
   const pad = (n) => String(n).padStart(2, '0');
@@ -102,11 +107,19 @@ export function startOfMonth(date) {
   return d;
 }
 
-export function getRangeStart(range) {
-  const now = new Date();
-  if (range === 'day') return startOfDay(now);
-  if (range === 'week') return startOfWeek(now);
-  return startOfMonth(now);
+export function getRangeStart(range, date = new Date()) {
+  if (range === 'day') return startOfDay(date);
+  if (range === 'week') return startOfWeek(date);
+  return startOfMonth(date);
+}
+
+export function getPreviousRangeStart(range, date = new Date()) {
+  const currentStart = getRangeStart(range, date);
+  const previous = new Date(currentStart);
+  if (range === 'day') previous.setDate(previous.getDate() - 1);
+  else if (range === 'week') previous.setDate(previous.getDate() - 7);
+  else previous.setMonth(previous.getMonth() - 1);
+  return getRangeStart(range, previous);
 }
 
 export function recalcDuration(startTime, endTime) {
