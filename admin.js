@@ -1,3 +1,20 @@
+import {
+  ensureRemoteState,
+  subscribeDashboard,
+  saveDashboardState
+} from './firebase.js';
+import {
+  formatDateTime,
+  formatDuration,
+  toDatetimeLocalValue,
+  getRangeStart,
+  recalcDuration,
+  aggregateByCategory,
+  downloadBlob,
+  CHART_PALETTE
+} from './shared.js';
+
+const syncBanner = document.getElementById('syncBanner');
 const rangeSelect = document.getElementById('rangeSelect');
 const statsPersonSelect = document.getElementById('statsPersonSelect');
 const statsCategorySelect = document.getElementById('statsCategorySelect');
@@ -13,40 +30,42 @@ const exportCsvBtn = document.getElementById('exportCsvBtn');
 const exportExcelBtn = document.getElementById('exportExcelBtn');
 const clearDataBtn = document.getElementById('clearDataBtn');
 
+let dashboardState = { people: [], categories: [], records: [], activeRecord: null };
 let barChart;
 let pieChart;
 
-function renderAdminSelectOptions() {
-  const people = getPeople();
-  const categories = getCategories();
+function setSyncStatus(text, ok = true) {
+  syncBanner.textContent = text;
+  syncBanner.className = ok ? 'sync-banner' : 'sync-banner sync-banner-error';
+}
 
+function renderAdminSelectOptions() {
+  const { people, categories } = dashboardState;
   statsPersonSelect.innerHTML = ['<option value="all">全部人員</option>']
     .concat(people.map((person) => `<option value="${person}">${person}</option>`))
     .join('');
-
   statsCategorySelect.innerHTML = ['<option value="all">全部項目</option>']
     .concat(categories.map((category) => `<option value="${category}">${category}</option>`))
     .join('');
 }
 
 function renderTags() {
-  peopleTags.innerHTML = getPeople()
-    .map((person) => `<span class="tag">${person}<button type="button" onclick="removePerson('${person.replace(/'/g, "\\'")}')">×</button></span>`)
+  peopleTags.innerHTML = dashboardState.people
+    .map((person) => `<span class="tag">${person}<button type="button" onclick="window.removePerson('${person.replace(/'/g, "\\'")}')">×</button></span>`)
     .join('');
 
-  categoryTags.innerHTML = getCategories()
-    .map((category) => `<span class="tag">${category}<button type="button" onclick="removeCategory('${category.replace(/'/g, "\\'")}')">×</button></span>`)
+  categoryTags.innerHTML = dashboardState.categories
+    .map((category) => `<span class="tag">${category}<button type="button" onclick="window.removeCategory('${category.replace(/'/g, "\\'")}')">×</button></span>`)
     .join('');
 }
 
 function collectStats() {
-  const records = getRecords();
   const range = rangeSelect.value;
   const selectedPerson = statsPersonSelect.value;
   const selectedCategory = statsCategorySelect.value;
   const rangeStart = getRangeStart(range);
 
-  return records.filter((record) => {
+  return dashboardState.records.filter((record) => {
     const start = new Date(record.startTime);
     const inRange = start >= rangeStart;
     const personMatch = selectedPerson === 'all' ? true : record.person === selectedPerson;
@@ -71,8 +90,7 @@ function renderSummary(records) {
 }
 
 function renderCharts(records) {
-  const people = getPeople();
-  const categories = getCategories();
+  const { people, categories } = dashboardState;
   const selectedPerson = statsPersonSelect.value;
   const chartRecords = selectedPerson === 'all' ? records : records.filter((r) => r.person === selectedPerson);
   const categoryTotals = aggregateByCategory(chartRecords, categories);
@@ -126,8 +144,8 @@ function renderRecordsTable(records) {
           <td>${record.durationMinutes}</td>
           <td>
             <div class="action-cell">
-              <button class="small-btn edit-btn" onclick="editRecord('${record.id}')">編輯</button>
-              <button class="small-btn delete-btn" onclick="deleteRecord('${record.id}')">刪除</button>
+              <button class="small-btn edit-btn" onclick="window.editRecord('${record.id}')">編輯</button>
+              <button class="small-btn delete-btn" onclick="window.deleteRecord('${record.id}')">刪除</button>
             </div>
           </td>
         </tr>
@@ -143,60 +161,58 @@ function renderAdminStats() {
   renderRecordsTable(statsRecords);
 }
 
-function addPerson() {
+function refreshAdmin() {
+  const selectedPerson = statsPersonSelect.value;
+  const selectedCategory = statsCategorySelect.value;
+  renderAdminSelectOptions();
+  renderTags();
+  if ([...statsPersonSelect.options].some((opt) => opt.value === selectedPerson)) statsPersonSelect.value = selectedPerson;
+  if ([...statsCategorySelect.options].some((opt) => opt.value === selectedCategory)) statsCategorySelect.value = selectedCategory;
+  renderAdminStats();
+}
+
+async function addPerson() {
   const value = newPersonInput.value.trim();
   if (!value) return;
-  const people = getPeople();
-  if (people.includes(value)) return alert('這個人員已存在。');
-  people.push(value);
-  savePeople(people);
+  if (dashboardState.people.includes(value)) return alert('這個人員已存在。');
+  await saveDashboardState({ people: dashboardState.people.concat(value) });
   newPersonInput.value = '';
-  refreshAdmin();
 }
 
-function addCategory() {
+async function addCategory() {
   const value = newCategoryInput.value.trim();
   if (!value) return;
-  const categories = getCategories();
-  if (categories.includes(value)) return alert('這個項目已存在。');
-  categories.push(value);
-  saveCategories(categories);
+  if (dashboardState.categories.includes(value)) return alert('這個項目已存在。');
+  await saveDashboardState({ categories: dashboardState.categories.concat(value) });
   newCategoryInput.value = '';
-  refreshAdmin();
 }
 
-window.removePerson = function removePerson(person) {
-  const people = getPeople();
-  if (people.length <= 1) return alert('至少要保留一位人員。');
-  const used = getRecords().some((record) => record.person === person) || (getActiveRecord() && getActiveRecord().person === person);
+window.removePerson = async function removePerson(person) {
+  if (dashboardState.people.length <= 1) return alert('至少要保留一位人員。');
+  const used = dashboardState.records.some((record) => record.person === person) || (dashboardState.activeRecord && dashboardState.activeRecord.person === person);
   if (used) return alert('這個人員已經有使用紀錄，暫時不能刪除。');
-  savePeople(people.filter((item) => item !== person));
-  refreshAdmin();
+  await saveDashboardState({ people: dashboardState.people.filter((item) => item !== person) });
 };
 
-window.removeCategory = function removeCategory(category) {
-  const categories = getCategories();
-  if (categories.length <= 1) return alert('至少要保留一個項目。');
-  const used = getRecords().some((record) => record.category === category) || (getActiveRecord() && getActiveRecord().category === category);
+window.removeCategory = async function removeCategory(category) {
+  if (dashboardState.categories.length <= 1) return alert('至少要保留一個項目。');
+  const used = dashboardState.records.some((record) => record.category === category) || (dashboardState.activeRecord && dashboardState.activeRecord.category === category);
   if (used) return alert('這個項目已經有使用紀錄，暫時不能刪除。');
-  saveCategories(categories.filter((item) => item !== category));
-  refreshAdmin();
+  await saveDashboardState({ categories: dashboardState.categories.filter((item) => item !== category) });
 };
 
-window.deleteRecord = function deleteRecord(id) {
+window.deleteRecord = async function deleteRecord(id) {
   if (!confirm('確定要刪除這筆紀錄嗎？')) return;
-  saveRecords(getRecords().filter((record) => record.id !== id));
-  refreshAdmin();
+  await saveDashboardState({ records: dashboardState.records.filter((record) => record.id !== id) });
 };
 
-window.editRecord = function editRecord(id) {
-  const records = getRecords();
-  const record = records.find((item) => item.id === id);
+window.editRecord = async function editRecord(id) {
+  const record = dashboardState.records.find((item) => item.id === id);
   if (!record) return;
 
-  const person = prompt(`請輸入人員名稱（可用：${getPeople().join(' / ')}）`, record.person);
+  const person = prompt(`請輸入人員名稱（可用：${dashboardState.people.join(' / ')}）`, record.person);
   if (!person) return;
-  const category = prompt(`請輸入項目名稱（可用：${getCategories().join(' / ')}）`, record.category);
+  const category = prompt(`請輸入項目名稱（可用：${dashboardState.categories.join(' / ')}）`, record.category);
   if (!category) return;
   const start = prompt('請輸入開始時間（格式：YYYY-MM-DDTHH:mm）', toDatetimeLocalValue(record.startTime));
   if (!start) return;
@@ -206,50 +222,35 @@ window.editRecord = function editRecord(id) {
   const startDate = new Date(start);
   const endDate = new Date(end);
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) return alert('時間格式不正確，或結束時間必須晚於開始時間。');
-  if (!getPeople().includes(person)) return alert('人員不存在，請先新增該人員。');
-  if (!getCategories().includes(category)) return alert('項目不存在，請先新增該項目。');
+  if (!dashboardState.people.includes(person)) return alert('人員不存在，請先新增該人員。');
+  if (!dashboardState.categories.includes(category)) return alert('項目不存在，請先新增該項目。');
 
-  saveRecords(
-    records.map((item) =>
+  await saveDashboardState({
+    records: dashboardState.records.map((item) =>
       item.id === id
         ? { ...item, person, category, startTime: startDate.toISOString(), endTime: endDate.toISOString(), durationMinutes: recalcDuration(startDate.toISOString(), endDate.toISOString()) }
         : item
     )
-  );
-  refreshAdmin();
+  });
 };
 
 function exportCsv() {
-  const records = getRecords();
-  if (!records.length) return alert('目前沒有資料可以匯出。');
+  if (!dashboardState.records.length) return alert('目前沒有資料可以匯出。');
   const rows = [['人員', '項目', '開始時間', '結束時間', '分鐘數']].concat(
-    records.map((record) => [record.person, record.category, record.startTime, record.endTime, record.durationMinutes])
+    dashboardState.records.map((record) => [record.person, record.category, record.startTime, record.endTime, record.durationMinutes])
   );
   const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
   downloadBlob('study-time-records.csv', new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
 }
 
 function exportExcel() {
-  const records = getRecords();
-  if (!records.length) return alert('目前沒有資料可以匯出。');
+  if (!dashboardState.records.length) return alert('目前沒有資料可以匯出。');
   const worksheet = XLSX.utils.json_to_sheet(
-    records.map((record) => ({ 人員: record.person, 項目: record.category, 開始時間: formatDateTime(record.startTime), 結束時間: formatDateTime(record.endTime), 分鐘數: record.durationMinutes }))
+    dashboardState.records.map((record) => ({ 人員: record.person, 項目: record.category, 開始時間: formatDateTime(record.startTime), 結束時間: formatDateTime(record.endTime), 分鐘數: record.durationMinutes }))
   );
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, '時間紀錄');
   XLSX.writeFile(workbook, 'study-time-records.xlsx');
-}
-
-function refreshAdmin() {
-  const selectedPerson = statsPersonSelect.value;
-  const selectedCategory = statsCategorySelect.value;
-  renderAdminSelectOptions();
-  renderTags();
-
-  if ([...statsPersonSelect.options].some((opt) => opt.value === selectedPerson)) statsPersonSelect.value = selectedPerson;
-  if ([...statsCategorySelect.options].some((opt) => opt.value === selectedCategory)) statsCategorySelect.value = selectedCategory;
-
-  renderAdminStats();
 }
 
 addPersonBtn.addEventListener('click', addPerson);
@@ -261,11 +262,21 @@ statsPersonSelect.addEventListener('change', renderAdminStats);
 statsCategorySelect.addEventListener('change', renderAdminStats);
 exportCsvBtn.addEventListener('click', exportCsv);
 exportExcelBtn.addEventListener('click', exportExcel);
-clearDataBtn.addEventListener('click', () => {
-  if (!confirm('確定要清除所有本機紀錄嗎？這個動作無法復原。')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(ACTIVE_KEY);
-  refreshAdmin();
+clearDataBtn.addEventListener('click', async () => {
+  if (!confirm('確定要清除所有雲端資料嗎？這個動作無法復原。')) return;
+  await saveDashboardState({ records: [], activeRecord: null });
 });
 
-refreshAdmin();
+(async function init() {
+  try {
+    await ensureRemoteState();
+    subscribeDashboard((state) => {
+      dashboardState = state;
+      setSyncStatus('雲端同步狀態：已連線 Cloud Sync Connected');
+      refreshAdmin();
+    });
+  } catch (error) {
+    console.error(error);
+    setSyncStatus('雲端同步狀態：連線失敗，請檢查 Firebase 設定', false);
+  }
+})();

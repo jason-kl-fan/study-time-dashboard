@@ -20,11 +20,11 @@
         <div>
           <p class="eyebrow">Frontend • Input • Personal Stats</p>
           <h1>時光小站｜前台</h1>
-          <p class="hero-text">提供使用者記錄時間，並即時看到每位人員自己的時間分配圖。</p>
+          <p class="hero-text">提供使用者記錄時間，並即時看到每位人員自己的時間分配圖與累積時間。</p>
         </div>
         <div class="hero-card">
           <div class="hero-badge">✨ 前台輸入頁</div>
-          <p>這裡只保留輸入與基礎統計，完整管理請到後台頁。</p>
+          <p>這裡保留輸入與基礎統計，完整管理請到後台頁。資料會透過 Firebase 雲端同步。</p>
           <a class="link-btn" href="admin.html">前往後台管理</a>
         </div>
       </header>
@@ -39,27 +39,29 @@
             <span class="live-clock" id="liveClock"></span>
           </div>
 
+          <div class="sync-banner" id="syncBanner">雲端同步狀態：初始化中...</div>
+
           <div class="form-grid">
             <label>
-              <span>姓名</span>
+              <span>姓名 / Name</span>
               <select id="personSelect"></select>
             </label>
             <label>
-              <span>項目</span>
+              <span>項目 / Category</span>
               <select id="categorySelect"></select>
             </label>
           </div>
 
           <div class="action-buttons">
-            <button id="startBtn" class="primary-btn">開始計時</button>
-            <button id="endBtn" class="secondary-btn">結束計時</button>
+            <button id="startBtn" class="primary-btn">開始計時 Start</button>
+            <button id="endBtn" class="secondary-btn">結束計時 End</button>
           </div>
 
           <div class="status-card" id="currentStatus">目前沒有進行中的紀錄。</div>
 
           <div class="today-list-wrap">
             <div class="subsection-title-row">
-              <h3>今天的紀錄</h3>
+              <h3>今天的紀錄 / Today's Records</h3>
             </div>
             <div id="todayRecords" class="record-list empty-state">目前還沒有紀錄，先按下開始計時吧。</div>
           </div>
@@ -69,21 +71,21 @@
           <div class="panel-title-row">
             <div>
               <p class="panel-kicker">前台統計</p>
-              <h2>時間分配總覽</h2>
+              <h2>時間分配總覽 / Overview</h2>
             </div>
           </div>
 
           <div class="filter-bar two-col-tight">
             <label>
-              <span>統計區間</span>
+              <span>統計區間 / Range</span>
               <select id="rangeSelect">
-                <option value="day">每日</option>
-                <option value="week">每週</option>
-                <option value="month">每月</option>
+                <option value="day">每日 Day</option>
+                <option value="week">每週 Week</option>
+                <option value="month">每月 Month</option>
               </select>
             </label>
             <label>
-              <span>總覽人員</span>
+              <span>總覽人員 / Person</span>
               <select id="overviewPersonSelect"></select>
             </label>
           </div>
@@ -91,14 +93,14 @@
           <div class="summary-cards" id="summaryCards"></div>
 
           <div class="chart-card mt-18">
-            <h3>整體比較</h3>
+            <h3>整體比較 / Overall Comparison</h3>
             <canvas id="overviewBarChart"></canvas>
           </div>
 
           <div class="person-chart-section">
             <div class="subsection-title-row">
-              <h3>各人時間分配圖</h3>
-              <span class="table-tip">每個人都會有自己一張圖</span>
+              <h3>各人時間分配圖 / Personal Distribution</h3>
+              <span class="table-tip">每個人都會有自己一張圖與統計說明</span>
             </div>
             <div id="personChartsGrid" class="person-charts-grid"></div>
           </div>
@@ -106,7 +108,6 @@
       </main>
     </div>
 
-    <script src="app.js"></script>
-    <script src="frontend.js"></script>
+    <script type="module" src="frontend.js"></script>
   </body>
 </html>
