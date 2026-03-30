@@ -15,6 +15,7 @@ import {
 } from './shared.js';
 
 const syncBanner = document.getElementById('syncBanner');
+const diagnosticBox = document.getElementById('diagnosticBox');
 const loginPersonSelect = document.getElementById('loginPersonSelect');
 const loginPasswordInput = document.getElementById('loginPasswordInput');
 const loginBtn = document.getElementById('loginBtn');
@@ -35,6 +36,11 @@ let profilePieChart;
 function setSyncStatus(text, ok = true) {
   syncBanner.textContent = text;
   syncBanner.className = ok ? 'sync-banner' : 'sync-banner sync-banner-error';
+}
+
+function setDiagnostic(text, isError = false) {
+  diagnosticBox.textContent = `診斷訊息：${text}`;
+  diagnosticBox.className = isError ? 'diagnostic-box diagnostic-box-error' : 'diagnostic-box';
 }
 
 function renderPeople() {
@@ -160,21 +166,26 @@ profileRangeSelect.addEventListener('change', renderProfile);
 
 (async function init() {
   try {
+    setDiagnostic('開始初始化 Firebase / Firestore...');
     await ensureRemoteState();
+    setDiagnostic('已通過 ensureRemoteState，開始訂閱雲端資料...');
     subscribeDashboard(
       (state) => {
         dashboardState = state;
         renderPeople();
         setSyncStatus('雲端同步狀態：已連線 Cloud Sync Connected');
+        setDiagnostic('個人頁已收到 Firestore 資料。');
         renderProfile();
       },
       (error) => {
         console.error(error);
         setSyncStatus(`雲端同步狀態：${error.code || '連線失敗'}，請檢查 Firestore 是否已開啟`, false);
+        setDiagnostic(`${error.name || 'Error'}: ${error.message || error.code || '未知錯誤'}`, true);
       }
     );
   } catch (error) {
     console.error(error);
     setSyncStatus('雲端同步狀態：連線失敗，請檢查 Firebase 設定', false);
+    setDiagnostic(`${error.name || 'Error'}: ${error.message || '初始化失敗'}`, true);
   }
 })();
