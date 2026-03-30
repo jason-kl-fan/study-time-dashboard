@@ -724,9 +724,33 @@ th {
   }
 }
 
+@media (max-width: 900px) {
+  .grid-layout,
+  .frontend-layout,
+  .admin-auth-shell {
+    gap: 16px;
+  }
+
+  .panel,
+  .chart-card,
+  .table-card,
+  .settings-card,
+  .admin-auth-panel {
+    padding: 18px;
+  }
+
+  .tag {
+    flex-wrap: wrap;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
   .page-shell {
-    padding: 24px 14px 40px;
+    padding: 18px 10px 32px;
   }
 
   .hero,
@@ -734,8 +758,34 @@ th {
   .chart-card,
   .table-card,
   .admin-auth-panel {
-    padding: 18px;
-    border-radius: 22px;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .hero {
+    gap: 14px;
+  }
+
+  .hero h1,
+  .panel h2,
+  .subsection-title-row h3,
+  .chart-card h3 {
+    font-size: 1.05rem;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
+  .hero-text,
+  .security-note-card,
+  .status-card,
+  .summary-sub,
+  .table-tip,
+  .mini-pill,
+  label span,
+  th,
+  td {
+    font-size: 0.9rem;
+    line-height: 1.5;
   }
 
   .panel-title-row,
@@ -746,7 +796,65 @@ th {
   }
 
   .action-buttons,
-  .inline-creator-row {
+  .inline-creator-row,
+  .button-row-wrap {
     grid-template-columns: 1fr;
+  }
+
+  .button-row-wrap {
+    display: grid;
+    width: 100%;
+  }
+
+  .small-logout-btn,
+  .button-row-wrap .ghost-btn,
+  .inline-creator-row .ghost-btn {
+    width: 100%;
+  }
+
+  .tag-list {
+    gap: 8px;
+  }
+
+  .tag {
+    width: 100%;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    border-radius: 16px;
+    padding: 10px 12px;
+  }
+
+  .tag button {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .summary-cards,
+  .charts-grid,
+  .three-col,
+  .two-col-tight {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card {
+    overflow: hidden;
+  }
+
+  #barChart,
+  #overviewBarChart,
+  #profilePieChart,
+  #pieChart {
+    max-height: 280px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 680px;
   }
 }
