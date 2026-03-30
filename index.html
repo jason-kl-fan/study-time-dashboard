@@ -16,18 +16,24 @@
       <div class="decor decor-2"></div>
       <div class="decor decor-3"></div>
 
-      <header class="hero compact-hero">
+      <header class="hero compact-hero hero-with-indicator">
         <div>
           <p class="eyebrow">Frontend • Input • Personal Stats</p>
           <h1>時光小站｜前台</h1>
           <p class="hero-text">每位人員使用自己的密碼登記時間，並查看自己的統計與所有人的分配圖。</p>
         </div>
-        <div class="hero-card">
-          <div class="hero-badge">✨ 前台輸入頁</div>
-          <p>第一次新增人員時可設定個人密碼，之後開始 / 結束都要輸入該密碼。</p>
-          <div class="hero-link-list">
-            <a class="link-btn" href="profile.html">個人頁面</a>
-            <a class="link-btn" href="admin.html">前往後台管理</a>
+        <div class="hero-top-right">
+          <div class="status-indicator status-loading" id="syncIndicator" title="雲端同步狀態：初始化中">
+            <span class="status-dot"></span>
+            <span class="status-label" id="syncLabel">初始化中</span>
+          </div>
+          <div class="hero-card">
+            <div class="hero-badge">✨ 前台輸入頁</div>
+            <p>第一次新增人員時可設定個人密碼，之後開始 / 結束都要輸入該密碼。</p>
+            <div class="hero-link-list">
+              <a class="link-btn" href="profile.html">個人頁面</a>
+              <a class="link-btn" href="admin.html">前往後台管理</a>
+            </div>
           </div>
         </div>
       </header>
@@ -42,8 +48,7 @@
             <span class="live-clock" id="liveClock"></span>
           </div>
 
-          <div class="sync-banner" id="syncBanner">雲端同步狀態：初始化中...</div>
-          <div class="diagnostic-box" id="diagnosticBox">診斷訊息：等待初始化...</div>
+          <div class="diagnostic-box subtle-diagnostic" id="diagnosticBox">診斷訊息：等待初始化...</div>
 
           <div class="form-grid single-column">
             <label>
@@ -56,7 +61,7 @@
             </label>
             <label>
               <span>密碼 / Password</span>
-              <input id="passwordInput" type="password" placeholder="輸入這位人員的密碼" />
+              <input id="passwordInput" type="password" placeholder="輸入這位人員的密碼" autocomplete="current-password" />
             </label>
           </div>
 
@@ -116,6 +121,6 @@
       </main>
     </div>
 
-    <script type="module" src="frontend.js?v=20260330-4"></script>
+    <script type="module" src="frontend.js?v=20260330-5"></script>
   </body>
 </html>

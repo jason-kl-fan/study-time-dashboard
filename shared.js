@@ -9,6 +9,9 @@ export const CHART_PALETTE = [
 
 export const DEFAULT_PEOPLE = ['Sophia', 'Ariel'];
 export const DEFAULT_CATEGORIES = ['念書', '休閒', '玩遊戲'];
+export const ADMIN_SESSION_KEY = 'study-time-admin-auth';
+export const PROFILE_SESSION_KEY = 'study-time-profile-auth';
+export const ADMIN_PASSWORD_MIN_LENGTH = 6;
 
 export function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -29,6 +32,14 @@ export function normalizePeople(rawPeople = []) {
       createdAt: item.createdAt || new Date().toISOString()
     };
   });
+}
+
+export function normalizeSettings(rawSettings = {}) {
+  return {
+    adminPassword: rawSettings?.adminPassword || '',
+    adminUpdatedAt: rawSettings?.adminUpdatedAt || null,
+    lastSecurityNote: rawSettings?.lastSecurityNote || '請記得在 Firestore 規則與 Firebase Auth 再做進一步保護。'
+  };
 }
 
 export function personNames(people = []) {
@@ -118,4 +129,44 @@ export function updatePersonPassword(people, name, nextPassword) {
   return normalizePeople(people).map((item) =>
     item.name === name ? { ...item, password: nextPassword } : item
   );
+}
+
+export function verifyAdminPassword(settings, password) {
+  const normalized = normalizeSettings(settings);
+  if (!normalized.adminPassword) return { ok: false, reason: '尚未設定後台管理密碼。' };
+  if (normalized.adminPassword !== password) return { ok: false, reason: '管理密碼錯誤。' };
+  return { ok: true };
+}
+
+export function createSessionToken() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function saveAdminSession() {
+  localStorage.setItem(ADMIN_SESSION_KEY, createSessionToken());
+}
+
+export function clearAdminSession() {
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+}
+
+export function hasAdminSession() {
+  return Boolean(localStorage.getItem(ADMIN_SESSION_KEY));
+}
+
+export function saveProfileSession(name) {
+  localStorage.setItem(PROFILE_SESSION_KEY, JSON.stringify({ name, token: createSessionToken() }));
+}
+
+export function clearProfileSession() {
+  localStorage.removeItem(PROFILE_SESSION_KEY);
+}
+
+export function getProfileSession() {
+  try {
+    const raw = localStorage.getItem(PROFILE_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }

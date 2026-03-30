@@ -11,10 +11,14 @@ import {
   CHART_PALETTE,
   personNames,
   verifyPassword,
-  updatePersonPassword
+  updatePersonPassword,
+  saveProfileSession,
+  clearProfileSession,
+  getProfileSession
 } from './shared.js';
 
-const syncBanner = document.getElementById('syncBanner');
+const syncIndicator = document.getElementById('syncIndicator');
+const syncLabel = document.getElementById('syncLabel');
 const diagnosticBox = document.getElementById('diagnosticBox');
 const loginPersonSelect = document.getElementById('loginPersonSelect');
 const loginPasswordInput = document.getElementById('loginPasswordInput');
@@ -29,23 +33,27 @@ const profileSummaryCards = document.getElementById('profileSummaryCards');
 const profileLegend = document.getElementById('profileLegend');
 const profileRecords = document.getElementById('profileRecords');
 
-let dashboardState = { people: [], categories: [], records: [] };
+let dashboardState = { people: [], categories: [], records: [], settings: {} };
 let currentUser = null;
 let profilePieChart;
 
-function setSyncStatus(text, ok = true) {
-  syncBanner.textContent = text;
-  syncBanner.className = ok ? 'sync-banner' : 'sync-banner sync-banner-error';
+function setSyncStatus(status, text) {
+  syncIndicator.className = `status-indicator status-${status}`;
+  syncIndicator.title = text;
+  syncLabel.textContent = text;
 }
 
 function setDiagnostic(text, isError = false) {
   diagnosticBox.textContent = `診斷訊息：${text}`;
-  diagnosticBox.className = isError ? 'diagnostic-box diagnostic-box-error' : 'diagnostic-box';
+  diagnosticBox.className = isError ? 'diagnostic-box subtle-diagnostic diagnostic-box-error' : 'diagnostic-box subtle-diagnostic';
 }
 
 function renderPeople() {
   const names = personNames(dashboardState.people);
   loginPersonSelect.innerHTML = names.map((name) => `<option value="${name}">${name}</option>`).join('');
+  if (currentUser && names.includes(currentUser)) {
+    loginPersonSelect.value = currentUser;
+  }
 }
 
 function getUserRecords() {
@@ -66,17 +74,16 @@ function renderProfile() {
   }
 
   const records = getUserRecords();
-  const totalMinutes = records.reduce((sum, item) => sum + item.durationMinutes, 0);
-  const studyMinutes = records.filter((item) => item.category === '念書').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const leisureMinutes = records.filter((item) => item.category === '休閒').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const gameMinutes = records.filter((item) => item.category === '玩遊戲').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const totals = aggregateByCategory(records, dashboardState.categories);
+  const categories = dashboardState.categories;
+  const totals = aggregateByCategory(records, categories);
+  const totalMinutes = totals.reduce((sum, value) => sum + value, 0);
 
-  profileStatus.innerHTML = `<strong>${currentUser}</strong> 已登入，可以查看個人統計與修改密碼。`;
+  profileStatus.textContent = `${currentUser} 已登入，可查看自己的紀錄與統計。`;
+
   profileSummaryCards.innerHTML = [
-    { label: '總時數 / Total', value: formatDuration(totalMinutes) },
-    { label: '念書時間 / Study', value: formatDuration(studyMinutes) },
-    { label: '休閒＋遊戲 / Leisure + Game', value: formatDuration(leisureMinutes + gameMinutes) }
+    { label: '總時數', value: formatDuration(totalMinutes) },
+    { label: '筆數', value: `${records.length} 筆` },
+    { label: '主要項目', value: records.length ? categories[totals.indexOf(Math.max(...totals))] : '尚無資料' }
   ]
     .map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div></div>`)
     .join('');
@@ -85,86 +92,95 @@ function renderProfile() {
   profilePieChart = new Chart(document.getElementById('profilePieChart'), {
     type: 'doughnut',
     data: {
-      labels: dashboardState.categories,
-      datasets: [{ data: totals, backgroundColor: dashboardState.categories.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]), borderWidth: 0 }]
+      labels: categories,
+      datasets: [{ data: totals, backgroundColor: categories.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]), borderWidth: 0 }]
     },
-    options: { responsive: true, plugins: { legend: { display: false } } }
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
   });
 
-  const sum = totals.reduce((acc, value) => acc + value, 0);
-  profileLegend.innerHTML = dashboardState.categories
-    .map((category, index) => {
-      const minutes = totals[index];
-      const ratio = sum ? ((minutes / sum) * 100).toFixed(1) : '0.0';
-      return `
-        <div class="chart-stats-item">
-          <span class="dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
-          <div>
-            <strong>${category}</strong>
-            <div>累積時間 ${formatDuration(minutes)} ｜ 比例 ${ratio}%</div>
-            <div class="chart-en">Total ${formatDuration(minutes)} ｜ Ratio ${ratio}%</div>
-          </div>
-        </div>
-      `;
-    })
+  profileLegend.innerHTML = categories
+    .map((category, index) => `
+      <div class="chart-stat-item">
+        <span class="color-dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
+        <span>${category}</span>
+        <strong>${formatDuration(totals[index])}</strong>
+      </div>
+    `)
     .join('');
 
   if (!records.length) {
     profileRecords.className = 'record-list empty-state';
-    profileRecords.textContent = '目前這個區間沒有你的紀錄。';
+    profileRecords.textContent = '目前這個區間沒有個人紀錄。';
     return;
   }
 
   profileRecords.className = 'record-list';
-  profileRecords.innerHTML = records
-    .slice()
+  profileRecords.innerHTML = [...records]
     .sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
     .map(
       (record) => `
         <div class="record-item">
-          <div class="record-top">
-            <span>${record.category}</span>
-            <span>${formatDuration(record.durationMinutes)}</span>
+          <div>
+            <strong>${record.category}</strong>
+            <div class="record-time">${formatDateTime(record.startTime)} → ${formatDateTime(record.endTime)}</div>
           </div>
-          <div class="record-meta">${formatDateTime(record.startTime)} ～ ${formatDateTime(record.endTime)}</div>
+          <div class="record-duration">${formatDuration(record.durationMinutes)}</div>
         </div>
       `
     )
     .join('');
 }
 
-loginBtn.addEventListener('click', () => {
+function restoreSession() {
+  const session = getProfileSession();
+  if (!session?.name) return;
+  if (personNames(dashboardState.people).includes(session.name)) {
+    currentUser = session.name;
+  } else {
+    clearProfileSession();
+  }
+}
+
+function handleLogin() {
   const person = loginPersonSelect.value;
-  const password = loginPasswordInput.value;
-  const check = verifyPassword(dashboardState.people, person, password);
-  if (!check.ok) return alert(check.reason);
+  const password = loginPasswordInput.value.trim();
+  const result = verifyPassword(dashboardState.people, person, password);
+  if (!result.ok) return alert(result.reason);
   currentUser = person;
+  saveProfileSession(person);
   loginPasswordInput.value = '';
   renderProfile();
-});
+}
 
-logoutBtn.addEventListener('click', () => {
+function handleLogout() {
   currentUser = null;
+  clearProfileSession();
   renderProfile();
-});
+}
 
-changePasswordBtn.addEventListener('click', async () => {
+async function changePassword() {
   if (!currentUser) return alert('請先登入。');
-  const currentPassword = currentPasswordInput.value;
-  const newPassword = newPasswordInput.value;
-  const check = verifyPassword(dashboardState.people, currentUser, currentPassword);
-  if (!check.ok) return alert(check.reason);
-  if (!newPassword || newPassword.length < 4) return alert('新密碼至少 4 碼。');
+  const currentPassword = currentPasswordInput.value.trim();
+  const newPassword = newPasswordInput.value.trim();
+  if (newPassword.length < 4) return alert('新密碼至少 4 碼。');
+
+  const result = verifyPassword(dashboardState.people, currentUser, currentPassword);
+  if (!result.ok) return alert(result.reason);
 
   await saveDashboardState({ people: updatePersonPassword(dashboardState.people, currentUser, newPassword) });
   currentPasswordInput.value = '';
   newPasswordInput.value = '';
-  alert('密碼更新成功。');
-});
+  alert('密碼已更新。');
+}
 
-profileRangeSelect.addEventListener('change', renderProfile);
+async function init() {
+  setSyncStatus('loading', '連線中');
 
-(async function init() {
+  loginBtn.addEventListener('click', handleLogin);
+  logoutBtn.addEventListener('click', handleLogout);
+  changePasswordBtn.addEventListener('click', changePassword);
+  profileRangeSelect.addEventListener('change', renderProfile);
+
   try {
     setDiagnostic('開始初始化 Firebase / Firestore...');
     await ensureRemoteState();
@@ -172,20 +188,23 @@ profileRangeSelect.addEventListener('change', renderProfile);
     subscribeDashboard(
       (state) => {
         dashboardState = state;
+        restoreSession();
         renderPeople();
-        setSyncStatus('雲端同步狀態：已連線 Cloud Sync Connected');
+        setSyncStatus('online', '已連線');
         setDiagnostic('個人頁已收到 Firestore 資料。');
         renderProfile();
       },
       (error) => {
         console.error(error);
-        setSyncStatus(`雲端同步狀態：${error.code || '連線失敗'}，請檢查 Firestore 是否已開啟`, false);
+        setSyncStatus('error', '連線失敗');
         setDiagnostic(`${error.name || 'Error'}: ${error.message || error.code || '未知錯誤'}`, true);
       }
     );
   } catch (error) {
     console.error(error);
-    setSyncStatus('雲端同步狀態：連線失敗，請檢查 Firebase 設定', false);
+    setSyncStatus('error', '初始化失敗');
     setDiagnostic(`${error.name || 'Error'}: ${error.message || '初始化失敗'}`, true);
   }
-})();
+}
+
+init();

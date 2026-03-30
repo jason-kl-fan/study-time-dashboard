@@ -9,7 +9,7 @@ import {
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
-import { DEFAULT_CATEGORIES, DEFAULT_PEOPLE, normalizePeople } from './shared.js';
+import { DEFAULT_CATEGORIES, DEFAULT_PEOPLE, normalizePeople, normalizeSettings } from './shared.js';
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -20,6 +20,7 @@ const defaultState = {
   categories: DEFAULT_CATEGORIES,
   records: [],
   activeRecords: {},
+  settings: normalizeSettings(),
   updatedAt: null
 };
 
@@ -38,6 +39,9 @@ export async function ensureRemoteState() {
   if (!data.activeRecords) {
     patch.activeRecords = {};
   }
+  if (!data.settings) {
+    patch.settings = normalizeSettings();
+  }
   if (Object.keys(patch).length) {
     await updateDoc(dashboardRef, { ...patch, updatedAt: serverTimestamp() });
   }
@@ -53,6 +57,7 @@ export function subscribeDashboard(callback, onError) {
         categories: data.categories || defaultState.categories,
         records: data.records || [],
         activeRecords: data.activeRecords || {},
+        settings: normalizeSettings(data.settings),
         updatedAt: data.updatedAt || null
       });
     },

@@ -14,11 +14,29 @@ import {
   CHART_PALETTE,
   personNames,
   normalizePeople,
-  updatePersonPassword
+  normalizeSettings,
+  updatePersonPassword,
+  verifyAdminPassword,
+  ADMIN_PASSWORD_MIN_LENGTH,
+  hasAdminSession,
+  saveAdminSession,
+  clearAdminSession
 } from './shared.js';
 
-const syncBanner = document.getElementById('syncBanner');
+const syncIndicator = document.getElementById('syncIndicator');
+const syncLabel = document.getElementById('syncLabel');
 const diagnosticBox = document.getElementById('diagnosticBox');
+const securityNoteText = document.getElementById('securityNoteText');
+const adminAuthShell = document.getElementById('adminAuthShell');
+const adminLoginPanel = document.getElementById('adminLoginPanel');
+const adminSetupPanel = document.getElementById('adminSetupPanel');
+const adminAppShell = document.getElementById('adminAppShell');
+const adminPasswordInput = document.getElementById('adminPasswordInput');
+const adminLoginBtn = document.getElementById('adminLoginBtn');
+const adminLoginStatus = document.getElementById('adminLoginStatus');
+const setupAdminPasswordInput = document.getElementById('setupAdminPasswordInput');
+const setupAdminPasswordBtn = document.getElementById('setupAdminPasswordBtn');
+const adminLogoutBtn = document.getElementById('adminLogoutBtn');
 const rangeSelect = document.getElementById('rangeSelect');
 const statsPersonSelect = document.getElementById('statsPersonSelect');
 const statsCategorySelect = document.getElementById('statsCategorySelect');
@@ -34,18 +52,42 @@ const exportCsvBtn = document.getElementById('exportCsvBtn');
 const exportExcelBtn = document.getElementById('exportExcelBtn');
 const clearDataBtn = document.getElementById('clearDataBtn');
 
-let dashboardState = { people: [], categories: [], records: [], activeRecords: {} };
+let dashboardState = { people: [], categories: [], records: [], activeRecords: {}, settings: {} };
 let barChart;
 let pieChart;
 
-function setSyncStatus(text, ok = true) {
-  syncBanner.textContent = text;
-  syncBanner.className = ok ? 'sync-banner' : 'sync-banner sync-banner-error';
+function setSyncStatus(status, text) {
+  syncIndicator.className = `status-indicator status-${status}`;
+  syncIndicator.title = text;
+  syncLabel.textContent = text;
 }
 
 function setDiagnostic(text, isError = false) {
   diagnosticBox.textContent = `診斷訊息：${text}`;
-  diagnosticBox.className = isError ? 'diagnostic-box diagnostic-box-error' : 'diagnostic-box';
+  diagnosticBox.className = isError ? 'diagnostic-box subtle-diagnostic diagnostic-box-error' : 'diagnostic-box subtle-diagnostic';
+}
+
+function isAdminUnlocked() {
+  return hasAdminSession() && Boolean(normalizeSettings(dashboardState.settings).adminPassword);
+}
+
+function updateAuthUI() {
+  const settings = normalizeSettings(dashboardState.settings);
+  securityNoteText.textContent = settings.lastSecurityNote;
+
+  const hasPassword = Boolean(settings.adminPassword);
+  const unlocked = isAdminUnlocked();
+
+  adminSetupPanel.classList.toggle('hidden', hasPassword);
+  adminLoginPanel.classList.toggle('hidden', !hasPassword || unlocked);
+  adminAuthShell.classList.toggle('hidden', unlocked);
+  adminAppShell.classList.toggle('hidden', !unlocked);
+
+  if (!hasPassword) {
+    adminLoginStatus.textContent = '尚未設定後台密碼，請先建立管理密碼。';
+  } else if (!unlocked) {
+    adminLoginStatus.textContent = '請先輸入管理密碼，才能進入後台。';
+  }
 }
 
 function renderAdminSelectOptions() {
@@ -183,6 +225,7 @@ function refreshAdmin() {
 }
 
 async function addPerson() {
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   const value = newPersonInput.value.trim();
   if (!value) return;
   const people = normalizePeople(dashboardState.people);
@@ -194,6 +237,7 @@ async function addPerson() {
 }
 
 async function addCategory() {
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   const value = newCategoryInput.value.trim();
   if (!value) return;
   if (dashboardState.categories.includes(value)) return alert('這個項目已存在。');
@@ -201,13 +245,49 @@ async function addCategory() {
   newCategoryInput.value = '';
 }
 
+async function setupAdminPassword() {
+  const password = setupAdminPasswordInput.value.trim();
+  if (password.length < ADMIN_PASSWORD_MIN_LENGTH) {
+    return alert(`管理密碼至少 ${ADMIN_PASSWORD_MIN_LENGTH} 碼。`);
+  }
+  await saveDashboardState({
+    settings: {
+      ...normalizeSettings(dashboardState.settings),
+      adminPassword: password,
+      adminUpdatedAt: new Date().toISOString()
+    }
+  });
+  setupAdminPasswordInput.value = '';
+  alert('管理密碼已建立，請直接登入後台。');
+}
+
+function loginAdmin() {
+  const result = verifyAdminPassword(dashboardState.settings, adminPasswordInput.value.trim());
+  if (!result.ok) {
+    adminLoginStatus.textContent = result.reason;
+    return;
+  }
+  saveAdminSession();
+  adminPasswordInput.value = '';
+  adminLoginStatus.textContent = '登入成功。';
+  updateAuthUI();
+  refreshAdmin();
+}
+
+function logoutAdmin() {
+  clearAdminSession();
+  updateAuthUI();
+}
+
 window.resetPersonPassword = async function resetPersonPassword(name) {
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   const nextPassword = prompt(`請輸入 ${name} 的新密碼`);
   if (!nextPassword || nextPassword.length < 4) return alert('密碼至少 4 碼。');
   await saveDashboardState({ people: updatePersonPassword(dashboardState.people, name, nextPassword) });
 };
 
 window.removePerson = async function removePerson(person) {
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   const people = normalizePeople(dashboardState.people);
   if (people.length <= 1) return alert('至少要保留一位人員。');
   const used = dashboardState.records.some((record) => record.person === person) || dashboardState.activeRecords?.[person];
@@ -216,6 +296,7 @@ window.removePerson = async function removePerson(person) {
 };
 
 window.removeCategory = async function removeCategory(category) {
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   if (dashboardState.categories.length <= 1) return alert('至少要保留一個項目。');
   const used = dashboardState.records.some((record) => record.category === category) || Object.values(dashboardState.activeRecords || {}).some((item) => item.category === category);
   if (used) return alert('這個項目已經有使用紀錄，暫時不能刪除。');
@@ -223,11 +304,13 @@ window.removeCategory = async function removeCategory(category) {
 };
 
 window.deleteRecord = async function deleteRecord(id) {
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   if (!confirm('確定要刪除這筆紀錄嗎？')) return;
   await saveDashboardState({ records: dashboardState.records.filter((record) => record.id !== id) });
 };
 
 window.editRecord = async function editRecord(id) {
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   const record = dashboardState.records.find((item) => item.id === id);
   if (!record) return;
 
@@ -256,39 +339,53 @@ window.editRecord = async function editRecord(id) {
 };
 
 function exportCsv() {
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   if (!dashboardState.records.length) return alert('目前沒有資料可以匯出。');
   const rows = [['人員', '項目', '開始時間', '結束時間', '分鐘數']].concat(
     dashboardState.records.map((record) => [record.person, record.category, record.startTime, record.endTime, record.durationMinutes])
   );
   const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
-  downloadBlob('study-time-records.csv', new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
+  downloadBlob('study-time-records.csv', new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
 }
 
 function exportExcel() {
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   if (!dashboardState.records.length) return alert('目前沒有資料可以匯出。');
-  const worksheet = XLSX.utils.json_to_sheet(
-    dashboardState.records.map((record) => ({ 人員: record.person, 項目: record.category, 開始時間: formatDateTime(record.startTime), 結束時間: formatDateTime(record.endTime), 分鐘數: record.durationMinutes }))
+  const sheet = XLSX.utils.json_to_sheet(
+    dashboardState.records.map((record) => ({
+      人員: record.person,
+      項目: record.category,
+      開始時間: record.startTime,
+      結束時間: record.endTime,
+      分鐘數: record.durationMinutes
+    }))
   );
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, '時間紀錄');
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Records');
   XLSX.writeFile(workbook, 'study-time-records.xlsx');
 }
 
-addPersonBtn.addEventListener('click', addPerson);
-addCategoryBtn.addEventListener('click', addCategory);
-newPersonInput.addEventListener('keydown', (e) => e.key === 'Enter' && addPerson());
-newCategoryInput.addEventListener('keydown', (e) => e.key === 'Enter' && addCategory());
-rangeSelect.addEventListener('change', renderAdminStats);
-statsPersonSelect.addEventListener('change', renderAdminStats);
-statsCategorySelect.addEventListener('change', renderAdminStats);
-exportCsvBtn.addEventListener('click', exportCsv);
-exportExcelBtn.addEventListener('click', exportExcel);
-clearDataBtn.addEventListener('click', async () => {
-  if (!confirm('確定要清除所有雲端資料嗎？這個動作無法復原。')) return;
+async function clearAllData() {
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
+  if (!confirm('確定要清除所有紀錄與進行中資料嗎？此動作無法復原。')) return;
   await saveDashboardState({ records: [], activeRecords: {} });
-});
+}
 
-(async function init() {
+async function init() {
+  setSyncStatus('loading', '連線中');
+
+  adminLoginBtn.addEventListener('click', loginAdmin);
+  setupAdminPasswordBtn.addEventListener('click', setupAdminPassword);
+  adminLogoutBtn.addEventListener('click', logoutAdmin);
+  addPersonBtn.addEventListener('click', addPerson);
+  addCategoryBtn.addEventListener('click', addCategory);
+  exportCsvBtn.addEventListener('click', exportCsv);
+  exportExcelBtn.addEventListener('click', exportExcel);
+  clearDataBtn.addEventListener('click', clearAllData);
+  rangeSelect.addEventListener('change', refreshAdmin);
+  statsPersonSelect.addEventListener('change', refreshAdmin);
+  statsCategorySelect.addEventListener('change', refreshAdmin);
+
   try {
     setDiagnostic('開始初始化 Firebase / Firestore...');
     await ensureRemoteState();
@@ -296,19 +393,24 @@ clearDataBtn.addEventListener('click', async () => {
     subscribeDashboard(
       (state) => {
         dashboardState = state;
-        setSyncStatus('雲端同步狀態：已連線 Cloud Sync Connected');
+        setSyncStatus('online', '已連線');
         setDiagnostic('後台已收到 Firestore 資料。');
-        refreshAdmin();
+        updateAuthUI();
+        if (isAdminUnlocked()) {
+          refreshAdmin();
+        }
       },
       (error) => {
         console.error(error);
-        setSyncStatus(`雲端同步狀態：${error.code || '連線失敗'}，請檢查 Firestore 是否已開啟`, false);
+        setSyncStatus('error', '連線失敗');
         setDiagnostic(`${error.name || 'Error'}: ${error.message || error.code || '未知錯誤'}`, true);
       }
     );
   } catch (error) {
     console.error(error);
-    setSyncStatus('雲端同步狀態：連線失敗，請檢查 Firebase 設定', false);
+    setSyncStatus('error', '初始化失敗');
     setDiagnostic(`${error.name || 'Error'}: ${error.message || '初始化失敗'}`, true);
   }
-})();
+}
+
+init();

@@ -17,7 +17,8 @@ import {
 } from './shared.js';
 
 const liveClock = document.getElementById('liveClock');
-const syncBanner = document.getElementById('syncBanner');
+const syncIndicator = document.getElementById('syncIndicator');
+const syncLabel = document.getElementById('syncLabel');
 const diagnosticBox = document.getElementById('diagnosticBox');
 const personSelect = document.getElementById('personSelect');
 const categorySelect = document.getElementById('categorySelect');
@@ -31,7 +32,7 @@ const overviewPersonSelect = document.getElementById('overviewPersonSelect');
 const summaryCards = document.getElementById('summaryCards');
 const personChartsGrid = document.getElementById('personChartsGrid');
 
-let dashboardState = { people: [], categories: [], records: [], activeRecords: {} };
+let dashboardState = { people: [], categories: [], records: [], activeRecords: {}, settings: {} };
 let overviewBarChart;
 let personCharts = [];
 
@@ -43,14 +44,15 @@ function tickClock() {
   }).format(new Date());
 }
 
-function setSyncStatus(text, ok = true) {
-  syncBanner.textContent = text;
-  syncBanner.className = ok ? 'sync-banner' : 'sync-banner sync-banner-error';
+function setSyncStatus(status, text) {
+  syncIndicator.className = `status-indicator status-${status}`;
+  syncIndicator.title = text;
+  syncLabel.textContent = text;
 }
 
 function setDiagnostic(text, isError = false) {
   diagnosticBox.textContent = `診斷訊息：${text}`;
-  diagnosticBox.className = isError ? 'diagnostic-box diagnostic-box-error' : 'diagnostic-box';
+  diagnosticBox.className = isError ? 'diagnostic-box subtle-diagnostic diagnostic-box-error' : 'diagnostic-box subtle-diagnostic';
 }
 
 function renderSelectOptions() {
@@ -89,38 +91,36 @@ function renderTodayRecords() {
     .map(
       (record) => `
         <div class="record-item">
-          <div class="record-top">
-            <span>${record.person}｜${record.category}</span>
-            <span>${formatDuration(record.durationMinutes)}</span>
+          <div>
+            <strong>${record.person}</strong> · ${record.category}
+            <div class="record-time">${formatDateTime(record.startTime)} → ${formatDateTime(record.endTime)}</div>
           </div>
-          <div class="record-meta">${formatDateTime(record.startTime)} ～ ${formatDateTime(record.endTime)}</div>
+          <div class="record-duration">${formatDuration(record.durationMinutes)}</div>
         </div>
       `
     )
     .join('');
 }
 
-function collectFrontendStats() {
-  const range = rangeSelect.value;
-  const person = overviewPersonSelect.value;
-  const start = getRangeStart(range);
+function collectOverviewRecords() {
+  const selectedPerson = overviewPersonSelect.value;
+  const rangeStart = getRangeStart(rangeSelect.value);
   return dashboardState.records.filter((record) => {
-    const inRange = new Date(record.startTime) >= start;
-    const personMatch = person === 'all' ? true : record.person === person;
-    return inRange && personMatch;
+    const personMatch = selectedPerson === 'all' ? true : record.person === selectedPerson;
+    return personMatch && new Date(record.startTime) >= rangeStart;
   });
 }
 
 function renderSummary(records) {
-  const totalMinutes = records.reduce((sum, item) => sum + item.durationMinutes, 0);
-  const studyMinutes = records.filter((item) => item.category === '念書').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const leisureMinutes = records.filter((item) => item.category === '休閒').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const gameMinutes = records.filter((item) => item.category === '玩遊戲').reduce((sum, item) => sum + item.durationMinutes, 0);
+  const totalMinutes = records.reduce((sum, record) => sum + record.durationMinutes, 0);
+  const studyMinutes = records.filter((record) => record.category === '念書').reduce((sum, record) => sum + record.durationMinutes, 0);
+  const leisureMinutes = records.filter((record) => record.category === '休閒').reduce((sum, record) => sum + record.durationMinutes, 0);
+  const gameMinutes = records.filter((record) => record.category === '玩遊戲').reduce((sum, record) => sum + record.durationMinutes, 0);
 
   summaryCards.innerHTML = [
-    { label: '總時數 / Total', value: formatDuration(totalMinutes) },
-    { label: '念書時間 / Study', value: formatDuration(studyMinutes) },
-    { label: '休閒＋遊戲 / Leisure + Game', value: formatDuration(leisureMinutes + gameMinutes) }
+    { label: '總時數', value: formatDuration(totalMinutes) },
+    { label: '念書時間', value: formatDuration(studyMinutes) },
+    { label: '休閒＋遊戲', value: formatDuration(leisureMinutes + gameMinutes) }
   ]
     .map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div></div>`)
     .join('');
@@ -129,6 +129,7 @@ function renderSummary(records) {
 function renderOverviewBar(records) {
   const people = personNames(dashboardState.people);
   const categories = dashboardState.categories;
+
   if (overviewBarChart) overviewBarChart.destroy();
 
   overviewBarChart = new Chart(document.getElementById('overviewBarChart'), {
@@ -139,121 +140,98 @@ function renderOverviewBar(records) {
         label: person,
         data: aggregateByCategory(records.filter((record) => record.person === person), categories),
         backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
-        borderRadius: 10
+        borderRadius: 12
       }))
     },
     options: {
       responsive: true,
       plugins: { legend: { position: 'top' } },
-      scales: { y: { beginAtZero: true, title: { display: true, text: '分鐘 Minutes' } } }
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: '分鐘' }
+        }
+      }
     }
   });
 }
 
-function buildStatsLegend(person, categories, totals) {
-  const sum = totals.reduce((acc, value) => acc + value, 0);
-  if (!sum) {
-    return `<div class="chart-stats-note">${person} 目前沒有資料 / No data yet</div>`;
-  }
-
-  return `
-    <div class="chart-stats-list">
-      ${categories
-        .map((category, index) => {
-          const minutes = totals[index];
-          const ratio = sum ? ((minutes / sum) * 100).toFixed(1) : '0.0';
-          return `
-            <div class="chart-stats-item">
-              <span class="dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
-              <div>
-                <strong>${category}</strong>
-                <div>累積時間 ${formatDuration(minutes)} ｜ 比例 ${ratio}%</div>
-                <div class="chart-en">Total ${formatDuration(minutes)} ｜ Ratio ${ratio}%</div>
-              </div>
-            </div>
-          `;
-        })
-        .join('')}
-    </div>
-  `;
-}
-
 function renderPersonCharts(records) {
-  const people = personNames(dashboardState.people);
-  const categories = dashboardState.categories;
   personCharts.forEach((chart) => chart.destroy());
   personCharts = [];
 
+  const people = personNames(dashboardState.people);
+  const categories = dashboardState.categories;
+
   personChartsGrid.innerHTML = people
-    .map((person, index) => {
-      const totals = aggregateByCategory(records.filter((record) => record.person === person), categories);
-      const totalMinutes = totals.reduce((sum, value) => sum + value, 0);
-      return `
-        <div class="chart-card person-chart-card">
-          <h3>${person} 的時間分配圖 / ${person} Distribution</h3>
-          <p class="person-total">累積時間 Total Time：${formatDuration(totalMinutes)}</p>
+    .map(
+      (person, index) => `
+        <article class="chart-card person-chart-card">
+          <div class="subsection-title-row">
+            <h3>${person}</h3>
+            <span class="mini-pill">個人分配圖</span>
+          </div>
           <canvas id="personChart-${index}"></canvas>
-          ${buildStatsLegend(person, categories, totals)}
-        </div>
-      `;
-    })
+          <div class="chart-stats-note" id="personChartNote-${index}"></div>
+        </article>
+      `
+    )
     .join('');
 
   people.forEach((person, index) => {
-    const canvas = document.getElementById(`personChart-${index}`);
-    const data = aggregateByCategory(records.filter((record) => record.person === person), categories);
-    const chart = new Chart(canvas, {
-      type: 'doughnut',
-      data: {
-        labels: categories,
-        datasets: [
-          {
-            data,
+    const personRecords = records.filter((record) => record.person === person);
+    const totals = aggregateByCategory(personRecords, categories);
+    const totalMinutes = totals.reduce((sum, value) => sum + value, 0);
+
+    const ctx = document.getElementById(`personChart-${index}`);
+    const note = document.getElementById(`personChartNote-${index}`);
+
+    note.textContent = totalMinutes
+      ? `總計 ${formatDuration(totalMinutes)}，主要分配：${categories[totals.indexOf(Math.max(...totals))] || '尚無資料'}`
+      : '目前這個區間尚無資料。';
+
+    personCharts.push(
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: categories,
+          datasets: [{
+            data: totals,
             backgroundColor: categories.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]),
             borderWidth: 0
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } }
-      }
-    });
-    personCharts.push(chart);
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      })
+    );
   });
 }
 
-function renderFrontendStats() {
-  const records = collectFrontendStats();
+function refreshFrontend() {
+  const selectedPerson = overviewPersonSelect.value;
+  renderSelectOptions();
+  if ([...overviewPersonSelect.options].some((option) => option.value === selectedPerson)) {
+    overviewPersonSelect.value = selectedPerson;
+  }
+  renderCurrentStatus();
+  renderTodayRecords();
+  const records = collectOverviewRecords();
   renderSummary(records);
   renderOverviewBar(records);
   renderPersonCharts(records);
 }
 
-function refreshFrontend() {
-  const selectedPerson = personSelect.value;
-  const selectedCategory = categorySelect.value;
-  const selectedOverviewPerson = overviewPersonSelect.value;
-
-  renderSelectOptions();
-
-  if ([...personSelect.options].some((opt) => opt.value === selectedPerson)) personSelect.value = selectedPerson;
-  if ([...categorySelect.options].some((opt) => opt.value === selectedCategory)) categorySelect.value = selectedCategory;
-  if ([...overviewPersonSelect.options].some((opt) => opt.value === selectedOverviewPerson)) overviewPersonSelect.value = selectedOverviewPerson;
-
-  renderCurrentStatus();
-  renderTodayRecords();
-  renderFrontendStats();
-}
-
-async function submitStart() {
+async function startRecord() {
   const person = personSelect.value;
-  const password = passwordInput.value;
-  const check = verifyPassword(dashboardState.people, person, password);
-  if (!check.ok) return alert(check.reason);
-  if (dashboardState.activeRecords?.[person]) {
-    return alert('這位人員目前已經有一筆進行中的紀錄。');
-  }
+  const category = categorySelect.value;
+  const password = passwordInput.value.trim();
+
+  const result = verifyPassword(dashboardState.people, person, password);
+  if (!result.ok) return alert(result.reason);
+  if (dashboardState.activeRecords?.[person]) return alert('這位人員已經有進行中的紀錄。');
 
   await saveDashboardState({
     activeRecords: {
@@ -261,50 +239,53 @@ async function submitStart() {
       [person]: {
         id: uid(),
         person,
-        category: categorySelect.value,
+        category,
         startTime: new Date().toISOString()
       }
     }
   });
+
   passwordInput.value = '';
 }
 
-async function submitEnd() {
+async function endRecord() {
   const person = personSelect.value;
-  const password = passwordInput.value;
-  const check = verifyPassword(dashboardState.people, person, password);
-  if (!check.ok) return alert(check.reason);
+  const password = passwordInput.value.trim();
+  const result = verifyPassword(dashboardState.people, person, password);
+  if (!result.ok) return alert(result.reason);
 
   const active = dashboardState.activeRecords?.[person];
-  if (!active) {
-    return alert('這位人員目前沒有進行中的紀錄可以結束。');
-  }
+  if (!active) return alert('這位人員目前沒有進行中的紀錄。');
 
   const endTime = new Date().toISOString();
+  const nextRecord = {
+    ...active,
+    endTime,
+    durationMinutes: recalcDuration(active.startTime, endTime)
+  };
+
   const nextActive = { ...dashboardState.activeRecords };
   delete nextActive[person];
 
   await saveDashboardState({
-    records: dashboardState.records.concat({
-      ...active,
-      endTime,
-      durationMinutes: recalcDuration(active.startTime, endTime)
-    }),
+    records: dashboardState.records.concat(nextRecord),
     activeRecords: nextActive
   });
+
   passwordInput.value = '';
 }
 
-personSelect.addEventListener('change', renderCurrentStatus);
-startBtn.addEventListener('click', submitStart);
-endBtn.addEventListener('click', submitEnd);
-rangeSelect.addEventListener('change', renderFrontendStats);
-overviewPersonSelect.addEventListener('change', renderFrontendStats);
+async function init() {
+  tickClock();
+  setInterval(tickClock, 1000);
+  setSyncStatus('loading', '連線中');
 
-setInterval(tickClock, 1000);
-tickClock();
+  startBtn.addEventListener('click', startRecord);
+  endBtn.addEventListener('click', endRecord);
+  personSelect.addEventListener('change', renderCurrentStatus);
+  rangeSelect.addEventListener('change', refreshFrontend);
+  overviewPersonSelect.addEventListener('change', refreshFrontend);
 
-(async function init() {
   try {
     setDiagnostic('開始初始化 Firebase / Firestore...');
     await ensureRemoteState();
@@ -312,19 +293,21 @@ tickClock();
     subscribeDashboard(
       (state) => {
         dashboardState = state;
-        setSyncStatus('雲端同步狀態：已連線 Cloud Sync Connected');
+        setSyncStatus('online', '已連線');
         setDiagnostic('前台已收到 Firestore 資料。');
         refreshFrontend();
       },
       (error) => {
         console.error(error);
-        setSyncStatus(`雲端同步狀態：${error.code || '連線失敗'}，請檢查 Firestore 是否已開啟`, false);
+        setSyncStatus('error', '連線失敗');
         setDiagnostic(`${error.name || 'Error'}: ${error.message || error.code || '未知錯誤'}`, true);
       }
     );
   } catch (error) {
     console.error(error);
-    setSyncStatus('雲端同步狀態：連線失敗，請檢查 Firebase 設定', false);
+    setSyncStatus('error', '初始化失敗');
     setDiagnostic(`${error.name || 'Error'}: ${error.message || '初始化失敗'}`, true);
   }
-})();
+}
+
+init();
