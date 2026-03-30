@@ -20,12 +20,15 @@
         <div>
           <p class="eyebrow">Frontend • Input • Personal Stats</p>
           <h1>時光小站｜前台</h1>
-          <p class="hero-text">提供使用者記錄時間，並即時看到每位人員自己的時間分配圖與累積時間。</p>
+          <p class="hero-text">每位人員使用自己的密碼登記時間，並查看自己的統計與所有人的分配圖。</p>
         </div>
         <div class="hero-card">
           <div class="hero-badge">✨ 前台輸入頁</div>
-          <p>這裡保留輸入與基礎統計，完整管理請到後台頁。資料會透過 Firebase 雲端同步。</p>
-          <a class="link-btn" href="admin.html">前往後台管理</a>
+          <p>第一次新增人員時可設定個人密碼，之後開始 / 結束都要輸入該密碼。</p>
+          <div class="hero-link-list">
+            <a class="link-btn" href="profile.html">個人頁面</a>
+            <a class="link-btn" href="admin.html">前往後台管理</a>
+          </div>
         </div>
       </header>
 
@@ -41,7 +44,7 @@
 
           <div class="sync-banner" id="syncBanner">雲端同步狀態：初始化中...</div>
 
-          <div class="form-grid">
+          <div class="form-grid single-column">
             <label>
               <span>姓名 / Name</span>
               <select id="personSelect"></select>
@@ -49,6 +52,10 @@
             <label>
               <span>項目 / Category</span>
               <select id="categorySelect"></select>
+            </label>
+            <label>
+              <span>密碼 / Password</span>
+              <input id="passwordInput" type="password" placeholder="輸入這位人員的密碼" />
             </label>
           </div>
 

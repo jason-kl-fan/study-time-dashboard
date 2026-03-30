@@ -7,8 +7,32 @@ export const CHART_PALETTE = [
   'rgba(255, 170, 120, 0.84)'
 ];
 
+export const DEFAULT_PEOPLE = ['Sophia', 'Ariel'];
+export const DEFAULT_CATEGORIES = ['念書', '休閒', '玩遊戲'];
+
 export function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function normalizePeople(rawPeople = []) {
+  if (!Array.isArray(rawPeople) || rawPeople.length === 0) {
+    return DEFAULT_PEOPLE.map((name) => ({ name, password: '', createdAt: new Date().toISOString() }));
+  }
+
+  return rawPeople.map((item) => {
+    if (typeof item === 'string') {
+      return { name: item, password: '', createdAt: new Date().toISOString() };
+    }
+    return {
+      name: item.name,
+      password: item.password || '',
+      createdAt: item.createdAt || new Date().toISOString()
+    };
+  });
+}
+
+export function personNames(people = []) {
+  return normalizePeople(people).map((item) => item.name);
 }
 
 export function formatDateTime(dateString) {
@@ -25,7 +49,7 @@ export function formatDateTime(dateString) {
 export function formatDuration(minutes) {
   const hrs = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (hrs === 0) return `${mins} 分鐘`; 
+  if (hrs === 0) return `${mins} 分鐘`;
   if (mins === 0) return `${hrs} 小時`;
   return `${hrs} 小時 ${mins} 分鐘`;
 }
@@ -80,4 +104,18 @@ export function downloadBlob(filename, blob) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export function verifyPassword(people, name, password) {
+  const person = normalizePeople(people).find((item) => item.name === name);
+  if (!person) return { ok: false, reason: '找不到這位人員。' };
+  if (!person.password) return { ok: false, reason: '這位人員尚未設定密碼。' };
+  if (person.password !== password) return { ok: false, reason: '密碼錯誤。' };
+  return { ok: true, person };
+}
+
+export function updatePersonPassword(people, name, nextPassword) {
+  return normalizePeople(people).map((item) =>
+    item.name === name ? { ...item, password: nextPassword } : item
+  );
 }

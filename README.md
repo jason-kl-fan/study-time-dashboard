@@ -3,38 +3,40 @@
 目前已升級成：
 - `index.html`：前台輸入頁
 - `admin.html`：後台管理頁
+- `profile.html`：個人登入頁
 - Firebase Firestore 雲端同步
 
-## 前台功能
+## 目前功能
+### 前台
+- 人員下拉選單
+- 項目下拉選單
 - 開始 / 結束時間紀錄
+- 每位人員需輸入自己的密碼才能開始或結束
+- 不同人員有各自獨立進行中的計時
 - 今日紀錄
 - 基本統計
 - 每位人員各自一張時間分配圖
 - 圖表下方顯示累積時間與比例
 - 中英文雙語顯示
 
-## 後台功能
+### 個人頁
+- 每位人員可登入自己的頁面
+- 查看自己的統計與紀錄
+- 修改自己的密碼
+
+### 後台
 - 人員與項目管理
+- 新增人員時設定初始密碼
+- 重設個別人員密碼
 - 每日 / 每週 / 每月統計
 - 長條圖 / 圓餅圖
 - 單筆編輯 / 刪除
 - 匯出 CSV / Excel
 - 與前台即時同步
 
-## Firebase 已接入
-目前專案已接上 Firebase 設定：
-- projectId: `study-time-dashboard`
-- Firestore 文件位置：`studyTimeDashboard/main`
+## Firebase 文件位置
+- `studyTimeDashboard/main`
 
-## Firestore 規則
-目前附上最簡單測試規則 `firestore.rules`：
-```txt
-allow read, write: if true;
-```
-這表示任何人都能讀寫，適合先測試。
-正式上線前建議加上 Firebase Auth 與更嚴格的 Security Rules。
-
-## 你還需要做的事
-1. 到 Firebase Console 開啟 Firestore Database
-2. 將 `firestore.rules` 套用到專案
-3. 確認 GitHub Pages 網址可正常讀寫資料
+## 注意
+目前密碼是直接存於 Firestore 文件中，這是為了快速完成需求的簡化版本。
+正式上線建議下一步改成 Firebase Authentication 或至少做密碼雜湊，避免明文密碼。

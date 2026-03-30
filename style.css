@@ -531,6 +531,21 @@ th {
   border: 1px solid var(--border);
 }
 
+.hero-link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.single-column,
+.one-col {
+  grid-template-columns: 1fr;
+}
+
+.profile-layout {
+  grid-template-columns: 380px 1fr;
+}
+
 .no-margin-top {
   margin-top: 0;
 }

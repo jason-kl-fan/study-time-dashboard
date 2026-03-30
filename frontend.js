@@ -11,13 +11,16 @@ import {
   getRangeStart,
   recalcDuration,
   aggregateByCategory,
-  CHART_PALETTE
+  CHART_PALETTE,
+  personNames,
+  verifyPassword
 } from './shared.js';
 
 const liveClock = document.getElementById('liveClock');
 const syncBanner = document.getElementById('syncBanner');
 const personSelect = document.getElementById('personSelect');
 const categorySelect = document.getElementById('categorySelect');
+const passwordInput = document.getElementById('passwordInput');
 const startBtn = document.getElementById('startBtn');
 const endBtn = document.getElementById('endBtn');
 const currentStatus = document.getElementById('currentStatus');
@@ -27,7 +30,7 @@ const overviewPersonSelect = document.getElementById('overviewPersonSelect');
 const summaryCards = document.getElementById('summaryCards');
 const personChartsGrid = document.getElementById('personChartsGrid');
 
-let dashboardState = { people: [], categories: [], records: [], activeRecord: null };
+let dashboardState = { people: [], categories: [], records: [], activeRecords: {} };
 let overviewBarChart;
 let personCharts = [];
 
@@ -45,7 +48,9 @@ function setSyncStatus(text, ok = true) {
 }
 
 function renderSelectOptions() {
-  const { people, categories } = dashboardState;
+  const people = personNames(dashboardState.people);
+  const categories = dashboardState.categories;
+
   personSelect.innerHTML = people.map((person) => `<option value="${person}">${person}</option>`).join('');
   categorySelect.innerHTML = categories.map((category) => `<option value="${category}">${category}</option>`).join('');
   overviewPersonSelect.innerHTML = ['<option value="all">全部人員 / All</option>']
@@ -54,10 +59,11 @@ function renderSelectOptions() {
 }
 
 function renderCurrentStatus() {
-  const active = dashboardState.activeRecord;
+  const person = personSelect.value;
+  const active = dashboardState.activeRecords?.[person];
   currentStatus.innerHTML = active
     ? `<strong>${active.person}</strong> 正在進行 <strong>${active.category}</strong><br />開始時間 Start: ${formatDateTime(active.startTime)}`
-    : '目前沒有進行中的紀錄。';
+    : '目前這位人員沒有進行中的紀錄。';
 }
 
 function renderTodayRecords() {
@@ -115,7 +121,8 @@ function renderSummary(records) {
 }
 
 function renderOverviewBar(records) {
-  const { people, categories } = dashboardState;
+  const people = personNames(dashboardState.people);
+  const categories = dashboardState.categories;
   if (overviewBarChart) overviewBarChart.destroy();
 
   overviewBarChart = new Chart(document.getElementById('overviewBarChart'), {
@@ -154,8 +161,8 @@ function buildStatsLegend(person, categories, totals) {
               <span class="dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
               <div>
                 <strong>${category}</strong>
-                <div>${formatDuration(minutes)} ｜ ${ratio}%</div>
-                <div class="chart-en">${category} ｜ ${formatDuration(minutes)} ｜ ${ratio}%</div>
+                <div>累積時間 ${formatDuration(minutes)} ｜ 比例 ${ratio}%</div>
+                <div class="chart-en">Total ${formatDuration(minutes)} ｜ Ratio ${ratio}%</div>
               </div>
             </div>
           `;
@@ -166,7 +173,8 @@ function buildStatsLegend(person, categories, totals) {
 }
 
 function renderPersonCharts(records) {
-  const { people, categories } = dashboardState;
+  const people = personNames(dashboardState.people);
+  const categories = dashboardState.categories;
   personCharts.forEach((chart) => chart.destroy());
   personCharts = [];
 
@@ -232,36 +240,58 @@ function refreshFrontend() {
   renderFrontendStats();
 }
 
-startBtn.addEventListener('click', async () => {
-  if (dashboardState.activeRecord) {
-    alert('目前已經有一筆進行中的紀錄，請先結束它。');
-    return;
+async function submitStart() {
+  const person = personSelect.value;
+  const password = passwordInput.value;
+  const check = verifyPassword(dashboardState.people, person, password);
+  if (!check.ok) return alert(check.reason);
+  if (dashboardState.activeRecords?.[person]) {
+    return alert('這位人員目前已經有一筆進行中的紀錄。');
   }
+
   await saveDashboardState({
-    activeRecord: {
-      id: uid(),
-      person: personSelect.value,
-      category: categorySelect.value,
-      startTime: new Date().toISOString()
+    activeRecords: {
+      ...dashboardState.activeRecords,
+      [person]: {
+        id: uid(),
+        person,
+        category: categorySelect.value,
+        startTime: new Date().toISOString()
+      }
     }
   });
-});
+  passwordInput.value = '';
+}
 
-endBtn.addEventListener('click', async () => {
-  const active = dashboardState.activeRecord;
+async function submitEnd() {
+  const person = personSelect.value;
+  const password = passwordInput.value;
+  const check = verifyPassword(dashboardState.people, person, password);
+  if (!check.ok) return alert(check.reason);
+
+  const active = dashboardState.activeRecords?.[person];
   if (!active) {
-    alert('目前沒有進行中的紀錄可以結束。');
-    return;
+    return alert('這位人員目前沒有進行中的紀錄可以結束。');
   }
-  const endTime = new Date().toISOString();
-  const nextRecords = dashboardState.records.concat({
-    ...active,
-    endTime,
-    durationMinutes: recalcDuration(active.startTime, endTime)
-  });
-  await saveDashboardState({ records: nextRecords, activeRecord: null });
-});
 
+  const endTime = new Date().toISOString();
+  const nextActive = { ...dashboardState.activeRecords };
+  delete nextActive[person];
+
+  await saveDashboardState({
+    records: dashboardState.records.concat({
+      ...active,
+      endTime,
+      durationMinutes: recalcDuration(active.startTime, endTime)
+    }),
+    activeRecords: nextActive
+  });
+  passwordInput.value = '';
+}
+
+personSelect.addEventListener('change', renderCurrentStatus);
+startBtn.addEventListener('click', submitStart);
+endBtn.addEventListener('click', submitEnd);
 rangeSelect.addEventListener('change', renderFrontendStats);
 overviewPersonSelect.addEventListener('change', renderFrontendStats);
 

@@ -11,7 +11,10 @@ import {
   recalcDuration,
   aggregateByCategory,
   downloadBlob,
-  CHART_PALETTE
+  CHART_PALETTE,
+  personNames,
+  normalizePeople,
+  updatePersonPassword
 } from './shared.js';
 
 const syncBanner = document.getElementById('syncBanner');
@@ -30,7 +33,7 @@ const exportCsvBtn = document.getElementById('exportCsvBtn');
 const exportExcelBtn = document.getElementById('exportExcelBtn');
 const clearDataBtn = document.getElementById('clearDataBtn');
 
-let dashboardState = { people: [], categories: [], records: [], activeRecord: null };
+let dashboardState = { people: [], categories: [], records: [], activeRecords: {} };
 let barChart;
 let pieChart;
 
@@ -40,7 +43,8 @@ function setSyncStatus(text, ok = true) {
 }
 
 function renderAdminSelectOptions() {
-  const { people, categories } = dashboardState;
+  const people = personNames(dashboardState.people);
+  const categories = dashboardState.categories;
   statsPersonSelect.innerHTML = ['<option value="all">全部人員</option>']
     .concat(people.map((person) => `<option value="${person}">${person}</option>`))
     .join('');
@@ -50,8 +54,8 @@ function renderAdminSelectOptions() {
 }
 
 function renderTags() {
-  peopleTags.innerHTML = dashboardState.people
-    .map((person) => `<span class="tag">${person}<button type="button" onclick="window.removePerson('${person.replace(/'/g, "\\'")}')">×</button></span>`)
+  peopleTags.innerHTML = normalizePeople(dashboardState.people)
+    .map((person) => `<span class="tag">${person.name}<button type="button" onclick="window.resetPersonPassword('${person.name.replace(/'/g, "\\'")}')">設密碼</button><button type="button" onclick="window.removePerson('${person.name.replace(/'/g, "\\'")}')">×</button></span>`)
     .join('');
 
   categoryTags.innerHTML = dashboardState.categories
@@ -90,7 +94,8 @@ function renderSummary(records) {
 }
 
 function renderCharts(records) {
-  const { people, categories } = dashboardState;
+  const people = personNames(dashboardState.people);
+  const categories = dashboardState.categories;
   const selectedPerson = statsPersonSelect.value;
   const chartRecords = selectedPerson === 'all' ? records : records.filter((r) => r.person === selectedPerson);
   const categoryTotals = aggregateByCategory(chartRecords, categories);
@@ -174,8 +179,11 @@ function refreshAdmin() {
 async function addPerson() {
   const value = newPersonInput.value.trim();
   if (!value) return;
-  if (dashboardState.people.includes(value)) return alert('這個人員已存在。');
-  await saveDashboardState({ people: dashboardState.people.concat(value) });
+  const people = normalizePeople(dashboardState.people);
+  if (people.some((item) => item.name === value)) return alert('這個人員已存在。');
+  const password = prompt(`請為 ${value} 設定初始密碼`);
+  if (!password || password.length < 4) return alert('密碼至少 4 碼。');
+  await saveDashboardState({ people: people.concat({ name: value, password, createdAt: new Date().toISOString() }) });
   newPersonInput.value = '';
 }
 
@@ -187,16 +195,23 @@ async function addCategory() {
   newCategoryInput.value = '';
 }
 
+window.resetPersonPassword = async function resetPersonPassword(name) {
+  const nextPassword = prompt(`請輸入 ${name} 的新密碼`);
+  if (!nextPassword || nextPassword.length < 4) return alert('密碼至少 4 碼。');
+  await saveDashboardState({ people: updatePersonPassword(dashboardState.people, name, nextPassword) });
+};
+
 window.removePerson = async function removePerson(person) {
-  if (dashboardState.people.length <= 1) return alert('至少要保留一位人員。');
-  const used = dashboardState.records.some((record) => record.person === person) || (dashboardState.activeRecord && dashboardState.activeRecord.person === person);
+  const people = normalizePeople(dashboardState.people);
+  if (people.length <= 1) return alert('至少要保留一位人員。');
+  const used = dashboardState.records.some((record) => record.person === person) || dashboardState.activeRecords?.[person];
   if (used) return alert('這個人員已經有使用紀錄，暫時不能刪除。');
-  await saveDashboardState({ people: dashboardState.people.filter((item) => item !== person) });
+  await saveDashboardState({ people: people.filter((item) => item.name !== person) });
 };
 
 window.removeCategory = async function removeCategory(category) {
   if (dashboardState.categories.length <= 1) return alert('至少要保留一個項目。');
-  const used = dashboardState.records.some((record) => record.category === category) || (dashboardState.activeRecord && dashboardState.activeRecord.category === category);
+  const used = dashboardState.records.some((record) => record.category === category) || Object.values(dashboardState.activeRecords || {}).some((item) => item.category === category);
   if (used) return alert('這個項目已經有使用紀錄，暫時不能刪除。');
   await saveDashboardState({ categories: dashboardState.categories.filter((item) => item !== category) });
 };
@@ -210,7 +225,7 @@ window.editRecord = async function editRecord(id) {
   const record = dashboardState.records.find((item) => item.id === id);
   if (!record) return;
 
-  const person = prompt(`請輸入人員名稱（可用：${dashboardState.people.join(' / ')}）`, record.person);
+  const person = prompt(`請輸入人員名稱（可用：${personNames(dashboardState.people).join(' / ')}）`, record.person);
   if (!person) return;
   const category = prompt(`請輸入項目名稱（可用：${dashboardState.categories.join(' / ')}）`, record.category);
   if (!category) return;
@@ -222,7 +237,7 @@ window.editRecord = async function editRecord(id) {
   const startDate = new Date(start);
   const endDate = new Date(end);
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) return alert('時間格式不正確，或結束時間必須晚於開始時間。');
-  if (!dashboardState.people.includes(person)) return alert('人員不存在，請先新增該人員。');
+  if (!personNames(dashboardState.people).includes(person)) return alert('人員不存在，請先新增該人員。');
   if (!dashboardState.categories.includes(category)) return alert('項目不存在，請先新增該項目。');
 
   await saveDashboardState({
@@ -264,7 +279,7 @@ exportCsvBtn.addEventListener('click', exportCsv);
 exportExcelBtn.addEventListener('click', exportExcel);
 clearDataBtn.addEventListener('click', async () => {
   if (!confirm('確定要清除所有雲端資料嗎？這個動作無法復原。')) return;
-  await saveDashboardState({ records: [], activeRecord: null });
+  await saveDashboardState({ records: [], activeRecords: {} });
 });
 
 (async function init() {
