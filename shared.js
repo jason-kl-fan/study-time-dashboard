@@ -53,7 +53,9 @@ export function personNames(people = []) {
 }
 
 export function displayCategory(category) {
-  return CATEGORY_LABELS[category] || category.includes('/') ? category : `${category} / ${category}`;
+  if (CATEGORY_LABELS[category]) return CATEGORY_LABELS[category];
+  if (typeof category === 'string' && category.includes('/')) return category;
+  return `${category} / ${category}`;
 }
 
 export function formatDateTime(dateString) {

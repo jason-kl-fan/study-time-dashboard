@@ -17,7 +17,11 @@ import {
   displayCategory
 } from './shared.js';
 
-Chart.register(ChartDataLabels);
+if (window.ChartDataLabels) {
+  Chart.register(window.ChartDataLabels);
+} else {
+  console.warn('ChartDataLabels plugin not loaded; continuing without datalabels.');
+}
 
 const liveClock = document.getElementById('liveClock');
 const syncIndicator = document.getElementById('syncIndicator');
