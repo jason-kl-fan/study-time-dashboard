@@ -13,6 +13,12 @@ export const ADMIN_SESSION_KEY = 'study-time-admin-auth';
 export const PROFILE_SESSION_KEY = 'study-time-profile-auth';
 export const ADMIN_PASSWORD_MIN_LENGTH = 6;
 
+const CATEGORY_LABELS = {
+  '念書': '念書 / Study',
+  '休閒': '休閒 / Leisure',
+  '玩遊戲': '玩遊戲 / Gaming'
+};
+
 export function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -38,12 +44,16 @@ export function normalizeSettings(rawSettings = {}) {
   return {
     adminPassword: rawSettings?.adminPassword || '',
     adminUpdatedAt: rawSettings?.adminUpdatedAt || null,
-    lastSecurityNote: rawSettings?.lastSecurityNote || '請記得在 Firestore 規則與 Firebase Auth 再做進一步保護。'
+    lastSecurityNote: rawSettings?.lastSecurityNote || '請記得在 Firestore 規則與 Firebase Auth 再做進一步保護。 / Please add stronger Firebase Auth and Firestore Rules later.'
   };
 }
 
 export function personNames(people = []) {
   return normalizePeople(people).map((item) => item.name);
+}
+
+export function displayCategory(category) {
+  return CATEGORY_LABELS[category] || category.includes('/') ? category : `${category} / ${category}`;
 }
 
 export function formatDateTime(dateString) {
@@ -60,9 +70,9 @@ export function formatDateTime(dateString) {
 export function formatDuration(minutes) {
   const hrs = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (hrs === 0) return `${mins} 分鐘`;
-  if (mins === 0) return `${hrs} 小時`;
-  return `${hrs} 小時 ${mins} 分鐘`;
+  if (hrs === 0) return `${mins} 分鐘 / min`;
+  if (mins === 0) return `${hrs} 小時 / hr`;
+  return `${hrs} 小時 ${mins} 分鐘 / ${hrs}h ${mins}m`;
 }
 
 export function toDatetimeLocalValue(dateString) {
@@ -108,6 +118,18 @@ export function aggregateByCategory(records, categories) {
   );
 }
 
+export function renameCategoryInState(state, oldName, newName) {
+  const categories = state.categories.map((item) => (item === oldName ? newName : item));
+  const records = state.records.map((record) => (record.category === oldName ? { ...record, category: newName } : record));
+  const activeRecords = Object.fromEntries(
+    Object.entries(state.activeRecords || {}).map(([key, value]) => [
+      key,
+      value?.category === oldName ? { ...value, category: newName } : value
+    ])
+  );
+  return { categories, records, activeRecords };
+}
+
 export function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -119,9 +141,9 @@ export function downloadBlob(filename, blob) {
 
 export function verifyPassword(people, name, password) {
   const person = normalizePeople(people).find((item) => item.name === name);
-  if (!person) return { ok: false, reason: '找不到這位人員。' };
-  if (!person.password) return { ok: false, reason: '這位人員尚未設定密碼。' };
-  if (person.password !== password) return { ok: false, reason: '密碼錯誤。' };
+  if (!person) return { ok: false, reason: '找不到這位人員。 / Person not found.' };
+  if (!person.password) return { ok: false, reason: '這位人員尚未設定密碼。 / Password not set yet.' };
+  if (person.password !== password) return { ok: false, reason: '密碼錯誤。 / Wrong password.' };
   return { ok: true, person };
 }
 
@@ -133,8 +155,8 @@ export function updatePersonPassword(people, name, nextPassword) {
 
 export function verifyAdminPassword(settings, password) {
   const normalized = normalizeSettings(settings);
-  if (!normalized.adminPassword) return { ok: false, reason: '尚未設定後台管理密碼。' };
-  if (normalized.adminPassword !== password) return { ok: false, reason: '管理密碼錯誤。' };
+  if (!normalized.adminPassword) return { ok: false, reason: '尚未設定後台管理密碼。 / Admin password not set.' };
+  if (normalized.adminPassword !== password) return { ok: false, reason: '管理密碼錯誤。 / Wrong admin password.' };
   return { ok: true };
 }
 

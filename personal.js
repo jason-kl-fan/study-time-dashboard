@@ -14,7 +14,8 @@ import {
   updatePersonPassword,
   saveProfileSession,
   clearProfileSession,
-  getProfileSession
+  getProfileSession,
+  displayCategory
 } from './shared.js';
 
 Chart.register(ChartDataLabels);
@@ -46,7 +47,7 @@ function setSyncStatus(status, text) {
 }
 
 function setDiagnostic(text, isError = false) {
-  diagnosticBox.textContent = `診斷訊息：${text}`;
+  diagnosticBox.textContent = `診斷訊息 / Diagnostic：${text}`;
   diagnosticBox.className = isError ? 'diagnostic-box subtle-diagnostic diagnostic-box-error' : 'diagnostic-box subtle-diagnostic';
 }
 
@@ -71,11 +72,11 @@ function getUserRecords() {
 
 function renderProfile() {
   if (!currentUser) {
-    profileStatus.textContent = '尚未登入。';
+    profileStatus.textContent = '尚未登入。 / Not logged in.';
     profileSummaryCards.innerHTML = '';
-    profileLegend.innerHTML = '<div class="chart-stats-note">登入後即可查看統計。</div>';
+    profileLegend.innerHTML = '<div class="chart-stats-note">登入後即可查看統計。 / Login to view stats.</div>';
     profileRecords.className = 'record-list empty-state';
-    profileRecords.textContent = '登入後即可查看自己的紀錄。';
+    profileRecords.textContent = '登入後即可查看自己的紀錄。 / Login to view your records.';
     if (profilePieChart) profilePieChart.destroy();
     return;
   }
@@ -85,21 +86,19 @@ function renderProfile() {
   const totals = aggregateByCategory(records, categories);
   const totalMinutes = totals.reduce((sum, value) => sum + value, 0);
 
-  profileStatus.textContent = `${currentUser} 已登入，可查看自己的紀錄與統計。`;
+  profileStatus.textContent = `${currentUser} 已登入，可查看自己的紀錄與統計。 / Logged in.`;
 
   profileSummaryCards.innerHTML = [
-    { label: '總統計時間', value: formatDuration(totalMinutes), sub: `${records.length} 筆紀錄` },
-    { label: '主要項目', value: records.length ? categories[totals.indexOf(Math.max(...totals))] : '尚無資料', sub: records.length ? percentOf(Math.max(...totals), totalMinutes) : '0%' },
-    { label: '平均每筆', value: records.length ? formatDuration(Math.round(totalMinutes / records.length)) : '0 分鐘', sub: '單筆平均時長' }
-  ]
-    .map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div><div class="summary-sub">${card.sub}</div></div>`)
-    .join('');
+    { label: '總統計時間 / Total Time', value: formatDuration(totalMinutes), sub: `${records.length} 筆紀錄 / records` },
+    { label: '主要項目 / Main Category', value: records.length ? displayCategory(categories[totals.indexOf(Math.max(...totals))]) : '尚無資料 / No data', sub: records.length ? percentOf(Math.max(...totals), totalMinutes) : '0%' },
+    { label: '平均每筆 / Avg per Record', value: records.length ? formatDuration(Math.round(totalMinutes / records.length)) : '0 分鐘 / 0 min', sub: '單筆平均時長 / Average duration' }
+  ].map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div><div class="summary-sub">${card.sub}</div></div>`).join('');
 
   if (profilePieChart) profilePieChart.destroy();
   profilePieChart = new Chart(document.getElementById('profilePieChart'), {
     type: 'doughnut',
     data: {
-      labels: categories,
+      labels: categories.map(displayCategory),
       datasets: [{ data: totals, backgroundColor: categories.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]), borderWidth: 0 }]
     },
     options: {
@@ -119,42 +118,35 @@ function renderProfile() {
     }
   });
 
-  profileLegend.innerHTML = categories
-    .map((category, index) => `
-      <div class="chart-stat-item stat-pill-row">
-        <div class="stat-pill-left">
-          <span class="color-dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
-          <span>${category}</span>
-        </div>
-        <div class="stat-pill-right">
-          <strong>${formatDuration(totals[index])}</strong>
-          <span>${percentOf(totals[index], totalMinutes)}</span>
-        </div>
+  profileLegend.innerHTML = categories.map((category, index) => `
+    <div class="chart-stat-item stat-pill-row">
+      <div class="stat-pill-left">
+        <span class="color-dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
+        <span>${displayCategory(category)}</span>
       </div>
-    `)
-    .join('');
+      <div class="stat-pill-right">
+        <strong>${formatDuration(totals[index])}</strong>
+        <span>${percentOf(totals[index], totalMinutes)}</span>
+      </div>
+    </div>
+  `).join('');
 
   if (!records.length) {
     profileRecords.className = 'record-list empty-state';
-    profileRecords.textContent = '目前這個區間沒有個人紀錄。';
+    profileRecords.textContent = '目前這個區間沒有個人紀錄。 / No records in this range.';
     return;
   }
 
   profileRecords.className = 'record-list';
-  profileRecords.innerHTML = [...records]
-    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
-    .map(
-      (record) => `
-        <div class="record-item">
-          <div>
-            <strong>${record.category}</strong>
-            <div class="record-time">${formatDateTime(record.startTime)} → ${formatDateTime(record.endTime)}</div>
-          </div>
-          <div class="record-duration">${formatDuration(record.durationMinutes)}</div>
-        </div>
-      `
-    )
-    .join('');
+  profileRecords.innerHTML = [...records].sort((a, b) => new Date(b.startTime) - new Date(a.startTime)).map((record) => `
+    <div class="record-item">
+      <div>
+        <strong>${displayCategory(record.category)}</strong>
+        <div class="record-time">${formatDateTime(record.startTime)} → ${formatDateTime(record.endTime)}</div>
+      </div>
+      <div class="record-duration">${formatDuration(record.durationMinutes)}</div>
+    </div>
+  `).join('');
 }
 
 function restoreSession() {
@@ -185,23 +177,20 @@ function handleLogout() {
 }
 
 async function changePassword() {
-  if (!currentUser) return alert('請先登入。');
+  if (!currentUser) return alert('請先登入。 / Please login first.');
   const currentPassword = currentPasswordInput.value.trim();
   const newPassword = newPasswordInput.value.trim();
-  if (newPassword.length < 4) return alert('新密碼至少 4 碼。');
-
+  if (newPassword.length < 4) return alert('新密碼至少 4 碼。 / At least 4 characters.');
   const result = verifyPassword(dashboardState.people, currentUser, currentPassword);
   if (!result.ok) return alert(result.reason);
-
   await saveDashboardState({ people: updatePersonPassword(dashboardState.people, currentUser, newPassword) });
   currentPasswordInput.value = '';
   newPasswordInput.value = '';
-  alert('密碼已更新。');
+  alert('密碼已更新。 / Password updated.');
 }
 
 async function init() {
-  setSyncStatus('loading', '連線中');
-
+  setSyncStatus('loading', '初始化中 / Initializing');
   loginBtn.addEventListener('click', handleLogin);
   logoutBtn.addEventListener('click', handleLogout);
   changePasswordBtn.addEventListener('click', changePassword);
@@ -210,25 +199,25 @@ async function init() {
   try {
     setDiagnostic('開始初始化 Firebase / Firestore...');
     await ensureRemoteState();
-    setDiagnostic('已通過 ensureRemoteState，開始訂閱雲端資料...');
+    setDiagnostic('已通過 ensureRemoteState，開始訂閱雲端資料 / Subscribing...');
     subscribeDashboard(
       (state) => {
         dashboardState = state;
         restoreSession();
         renderPeople();
-        setSyncStatus('online', '已連線');
-        setDiagnostic('個人頁已收到 Firestore 資料。');
+        setSyncStatus('online', '已連線 / Connected');
+        setDiagnostic('個人頁已收到 Firestore 資料。 / Personal page synced.');
         renderProfile();
       },
       (error) => {
         console.error(error);
-        setSyncStatus('error', '連線失敗');
+        setSyncStatus('error', '連線失敗 / Error');
         setDiagnostic(`${error.name || 'Error'}: ${error.message || error.code || '未知錯誤'}`, true);
       }
     );
   } catch (error) {
     console.error(error);
-    setSyncStatus('error', '初始化失敗');
+    setSyncStatus('error', '初始化失敗 / Init Failed');
     setDiagnostic(`${error.name || 'Error'}: ${error.message || '初始化失敗'}`, true);
   }
 }

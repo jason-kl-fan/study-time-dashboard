@@ -13,7 +13,8 @@ import {
   aggregateByCategory,
   CHART_PALETTE,
   personNames,
-  verifyPassword
+  verifyPassword,
+  displayCategory
 } from './shared.js';
 
 Chart.register(ChartDataLabels);
@@ -54,7 +55,7 @@ function setSyncStatus(status, text) {
 }
 
 function setDiagnostic(text, isError = false) {
-  diagnosticBox.textContent = `診斷訊息：${text}`;
+  diagnosticBox.textContent = `診斷訊息 / Diagnostic：${text}`;
   diagnosticBox.className = isError ? 'diagnostic-box subtle-diagnostic diagnostic-box-error' : 'diagnostic-box subtle-diagnostic';
 }
 
@@ -68,7 +69,7 @@ function renderSelectOptions() {
   const categories = dashboardState.categories;
 
   personSelect.innerHTML = people.map((person) => `<option value="${person}">${person}</option>`).join('');
-  categorySelect.innerHTML = categories.map((category) => `<option value="${category}">${category}</option>`).join('');
+  categorySelect.innerHTML = categories.map((category) => `<option value="${category}">${displayCategory(category)}</option>`).join('');
   overviewPersonSelect.innerHTML = ['<option value="all">全部人員 / All</option>']
     .concat(people.map((person) => `<option value="${person}">${person}</option>`))
     .join('');
@@ -78,8 +79,8 @@ function renderCurrentStatus() {
   const person = personSelect.value;
   const active = dashboardState.activeRecords?.[person];
   currentStatus.innerHTML = active
-    ? `<strong>${active.person}</strong> 正在進行 <strong>${active.category}</strong><br />開始時間 Start: ${formatDateTime(active.startTime)}`
-    : '目前這位人員沒有進行中的紀錄。';
+    ? `<strong>${active.person}</strong> 正在進行 / Active <strong>${displayCategory(active.category)}</strong><br />開始時間 / Start: ${formatDateTime(active.startTime)}`
+    : '目前這位人員沒有進行中的紀錄。 / No active record for this person.';
 }
 
 function renderTodayRecords() {
@@ -90,7 +91,7 @@ function renderTodayRecords() {
 
   if (!filtered.length) {
     todayRecords.className = 'record-list empty-state';
-    todayRecords.textContent = '目前還沒有紀錄，先按下開始計時吧。';
+    todayRecords.textContent = '目前還沒有紀錄，先按下開始計時吧。 / No records yet.';
     return;
   }
 
@@ -100,7 +101,7 @@ function renderTodayRecords() {
       (record) => `
         <div class="record-item">
           <div>
-            <strong>${record.person}</strong> · ${record.category}
+            <strong>${record.person}</strong> · ${displayCategory(record.category)}
             <div class="record-time">${formatDateTime(record.startTime)} → ${formatDateTime(record.endTime)}</div>
           </div>
           <div class="record-duration">${formatDuration(record.durationMinutes)}</div>
@@ -126,9 +127,9 @@ function renderSummary(records) {
   const gameMinutes = records.filter((record) => record.category === '玩遊戲').reduce((sum, record) => sum + record.durationMinutes, 0);
 
   summaryCards.innerHTML = [
-    { label: '總統計時間', value: formatDuration(totalMinutes), sub: `${records.length} 筆紀錄` },
-    { label: '念書時間', value: formatDuration(studyMinutes), sub: percentOf(studyMinutes, totalMinutes) },
-    { label: '休閒＋遊戲', value: formatDuration(leisureMinutes + gameMinutes), sub: percentOf(leisureMinutes + gameMinutes, totalMinutes) }
+    { label: '總統計時間 / Total Time', value: formatDuration(totalMinutes), sub: `${records.length} 筆紀錄 / records` },
+    { label: '念書時間 / Study Time', value: formatDuration(studyMinutes), sub: percentOf(studyMinutes, totalMinutes) },
+    { label: '休閒＋遊戲 / Leisure + Gaming', value: formatDuration(leisureMinutes + gameMinutes), sub: percentOf(leisureMinutes + gameMinutes, totalMinutes) }
   ]
     .map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div><div class="summary-sub">${card.sub}</div></div>`)
     .join('');
@@ -141,7 +142,7 @@ function renderOverviewBreakdown(records) {
 
   if (!totalMinutes) {
     overviewBreakdown.className = 'chart-stats-list empty-state';
-    overviewBreakdown.textContent = '目前這個統計區間還沒有資料。';
+    overviewBreakdown.textContent = '目前這個統計區間還沒有資料。 / No data in this range.';
     return;
   }
 
@@ -152,7 +153,7 @@ function renderOverviewBreakdown(records) {
         <div class="chart-stat-item stat-pill-row">
           <div class="stat-pill-left">
             <span class="color-dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
-            <span>${category}</span>
+            <span>${displayCategory(category)}</span>
           </div>
           <div class="stat-pill-right">
             <strong>${formatDuration(totals[index])}</strong>
@@ -173,7 +174,7 @@ function renderOverviewBar(records) {
   overviewBarChart = new Chart(document.getElementById('overviewBarChart'), {
     type: 'bar',
     data: {
-      labels: categories,
+      labels: categories.map(displayCategory),
       datasets: people.map((person, index) => ({
         label: person,
         data: aggregateByCategory(records.filter((record) => record.person === person), categories),
@@ -190,16 +191,8 @@ function renderOverviewBar(records) {
     },
     options: {
       responsive: true,
-      plugins: {
-        legend: { position: 'top' },
-        datalabels: { clamp: true }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: { display: true, text: '分鐘' }
-        }
-      }
+      plugins: { legend: { position: 'top' }, datalabels: { clamp: true } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: '分鐘 / Minutes' } } }
     }
   });
 }
@@ -217,7 +210,7 @@ function renderPersonCharts(records) {
         <article class="chart-card person-chart-card">
           <div class="subsection-title-row">
             <h3>${person}</h3>
-            <span class="mini-pill">個人分配圖</span>
+            <span class="mini-pill">個人分配圖 / Personal Chart</span>
           </div>
           <canvas id="personChart-${index}"></canvas>
           <div class="chart-stats-note" id="personChartNote-${index}"></div>
@@ -237,56 +230,46 @@ function renderPersonCharts(records) {
     const stats = document.getElementById(`personChartStats-${index}`);
 
     note.textContent = totalMinutes
-      ? `總計 ${formatDuration(totalMinutes)}，主要分配：${categories[totals.indexOf(Math.max(...totals))] || '尚無資料'}`
-      : '目前這個區間尚無資料。';
+      ? `總計 / Total ${formatDuration(totalMinutes)}，主要分配 / Main: ${displayCategory(categories[totals.indexOf(Math.max(...totals))] || '尚無資料')}`
+      : '目前這個區間尚無資料。 / No data in this range.';
 
     stats.innerHTML = totalMinutes
-      ? categories
-          .map(
-            (category, i) => `
-              <div class="chart-stat-item stat-pill-row">
-                <div class="stat-pill-left">
-                  <span class="color-dot" style="background:${CHART_PALETTE[i % CHART_PALETTE.length]}"></span>
-                  <span>${category}</span>
-                </div>
-                <div class="stat-pill-right">
-                  <strong>${formatDuration(totals[i])}</strong>
-                  <span>${percentOf(totals[i], totalMinutes)}</span>
-                </div>
-              </div>
-            `
-          )
-          .join('')
-      : '<div class="empty-state">尚無可顯示數據。</div>';
+      ? categories.map((category, i) => `
+          <div class="chart-stat-item stat-pill-row">
+            <div class="stat-pill-left">
+              <span class="color-dot" style="background:${CHART_PALETTE[i % CHART_PALETTE.length]}"></span>
+              <span>${displayCategory(category)}</span>
+            </div>
+            <div class="stat-pill-right">
+              <strong>${formatDuration(totals[i])}</strong>
+              <span>${percentOf(totals[i], totalMinutes)}</span>
+            </div>
+          </div>
+        `).join('')
+      : '<div class="empty-state">尚無可顯示數據 / No data.</div>';
 
-    personCharts.push(
-      new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: categories,
-          datasets: [{
-            data: totals,
-            backgroundColor: categories.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]),
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { position: 'bottom' },
-            datalabels: {
-              color: '#3d3552',
-              font: { weight: '700', size: 12 },
-              formatter: (value, context) => {
-                const total = context.dataset.data.reduce((sum, item) => sum + item, 0);
-                if (!value || !total) return '';
-                return `${Math.round((value / total) * 100)}%\n${formatDuration(value)}`;
-              }
+    personCharts.push(new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: categories.map(displayCategory),
+        datasets: [{ data: totals, backgroundColor: categories.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]), borderWidth: 0 }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' },
+          datalabels: {
+            color: '#3d3552',
+            font: { weight: '700', size: 12 },
+            formatter: (value, context) => {
+              const total = context.dataset.data.reduce((sum, item) => sum + item, 0);
+              if (!value || !total) return '';
+              return `${Math.round((value / total) * 100)}%\n${formatDuration(value)}`;
             }
           }
         }
-      })
-    );
+      }
+    }));
   });
 }
 
@@ -309,20 +292,14 @@ async function startRecord() {
   const person = personSelect.value;
   const category = categorySelect.value;
   const password = passwordInput.value.trim();
-
   const result = verifyPassword(dashboardState.people, person, password);
   if (!result.ok) return alert(result.reason);
-  if (dashboardState.activeRecords?.[person]) return alert('這位人員已經有進行中的紀錄。');
+  if (dashboardState.activeRecords?.[person]) return alert('這位人員已經有進行中的紀錄。 / Active record already exists.');
 
   await saveDashboardState({
     activeRecords: {
       ...dashboardState.activeRecords,
-      [person]: {
-        id: uid(),
-        person,
-        category,
-        startTime: new Date().toISOString()
-      }
+      [person]: { id: uid(), person, category, startTime: new Date().toISOString() }
     }
   });
 
@@ -336,30 +313,21 @@ async function endRecord() {
   if (!result.ok) return alert(result.reason);
 
   const active = dashboardState.activeRecords?.[person];
-  if (!active) return alert('這位人員目前沒有進行中的紀錄。');
+  if (!active) return alert('這位人員目前沒有進行中的紀錄。 / No active record.');
 
   const endTime = new Date().toISOString();
-  const nextRecord = {
-    ...active,
-    endTime,
-    durationMinutes: recalcDuration(active.startTime, endTime)
-  };
-
+  const nextRecord = { ...active, endTime, durationMinutes: recalcDuration(active.startTime, endTime) };
   const nextActive = { ...dashboardState.activeRecords };
   delete nextActive[person];
 
-  await saveDashboardState({
-    records: dashboardState.records.concat(nextRecord),
-    activeRecords: nextActive
-  });
-
+  await saveDashboardState({ records: dashboardState.records.concat(nextRecord), activeRecords: nextActive });
   passwordInput.value = '';
 }
 
 async function init() {
   tickClock();
   setInterval(tickClock, 1000);
-  setSyncStatus('loading', '連線中');
+  setSyncStatus('loading', '初始化中 / Initializing');
 
   startBtn.addEventListener('click', startRecord);
   endBtn.addEventListener('click', endRecord);
@@ -370,23 +338,23 @@ async function init() {
   try {
     setDiagnostic('開始初始化 Firebase / Firestore...');
     await ensureRemoteState();
-    setDiagnostic('已通過 ensureRemoteState，開始訂閱雲端資料...');
+    setDiagnostic('已通過 ensureRemoteState，開始訂閱雲端資料 / Subscribing...');
     subscribeDashboard(
       (state) => {
         dashboardState = state;
-        setSyncStatus('online', '已連線');
-        setDiagnostic('前台已收到 Firestore 資料。');
+        setSyncStatus('online', '已連線 / Connected');
+        setDiagnostic('前台已收到 Firestore 資料。 / Frontend synced.');
         refreshFrontend();
       },
       (error) => {
         console.error(error);
-        setSyncStatus('error', '連線失敗');
+        setSyncStatus('error', '連線失敗 / Error');
         setDiagnostic(`${error.name || 'Error'}: ${error.message || error.code || '未知錯誤'}`, true);
       }
     );
   } catch (error) {
     console.error(error);
-    setSyncStatus('error', '初始化失敗');
+    setSyncStatus('error', '初始化失敗 / Init Failed');
     setDiagnostic(`${error.name || 'Error'}: ${error.message || '初始化失敗'}`, true);
   }
 }

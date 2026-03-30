@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>時光小站｜前台輸入</title>
+    <title>時光小站 / Time Station｜前台 / Frontend</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
@@ -20,20 +20,20 @@
       <header class="hero compact-hero hero-with-indicator">
         <div>
           <p class="eyebrow">Frontend • Input • Personal Stats</p>
-          <h1>時光小站｜前台</h1>
-          <p class="hero-text">每位人員使用自己的密碼登記時間，並查看自己的統計與所有人的分配圖。</p>
+          <h1>時光小站 / Time Station｜前台 / Frontend</h1>
+          <p class="hero-text">每位人員使用自己的密碼登記時間，並查看自己的統計與所有人的分配圖。 / Each person can log time with their own password and view stats.</p>
         </div>
         <div class="hero-top-right">
-          <div class="status-indicator status-loading" id="syncIndicator" title="雲端同步狀態：初始化中">
+          <div class="status-indicator status-loading" id="syncIndicator" title="雲端同步狀態 / Cloud Sync：初始化中 / Initializing">
             <span class="status-dot"></span>
-            <span class="status-label" id="syncLabel">初始化中</span>
+            <span class="status-label" id="syncLabel">初始化中 / Initializing</span>
           </div>
           <div class="hero-card">
-            <div class="hero-badge">✨ 前台輸入頁</div>
-            <p>第一次新增人員時可設定個人密碼，之後開始 / 結束都要輸入該密碼。</p>
+            <div class="hero-badge">✨ 前台輸入 / Frontend Input</div>
+            <p>第一次新增人員時可設定個人密碼，之後開始 / 結束都要輸入該密碼。 / Password is required for start and end actions.</p>
             <div class="hero-link-list">
-              <a class="link-btn" href="profile.html?v=20260330-7">個人頁面</a>
-              <a class="link-btn" href="admin.html?v=20260330-7">前往後台管理</a>
+              <a class="link-btn" href="personal.html">個人頁面 / Personal</a>
+              <a class="link-btn" href="admin.html">前往後台管理 / Admin</a>
             </div>
           </div>
         </div>
@@ -43,13 +43,13 @@
         <section class="panel input-panel">
           <div class="panel-title-row">
             <div>
-              <p class="panel-kicker">時間輸入</p>
-              <h2>開始 / 結束紀錄</h2>
+              <p class="panel-kicker">時間輸入 / Time Input</p>
+              <h2>開始 / 結束紀錄 • Start / End Record</h2>
             </div>
             <span class="live-clock" id="liveClock"></span>
           </div>
 
-          <div class="diagnostic-box subtle-diagnostic" id="diagnosticBox">診斷訊息：等待初始化...</div>
+          <div class="diagnostic-box subtle-diagnostic" id="diagnosticBox">診斷訊息 / Diagnostic：等待初始化... / Waiting...</div>
 
           <div class="form-grid single-column">
             <label>
@@ -62,29 +62,29 @@
             </label>
             <label>
               <span>密碼 / Password</span>
-              <input id="passwordInput" type="password" placeholder="輸入這位人員的密碼" autocomplete="current-password" />
+              <input id="passwordInput" type="password" placeholder="輸入這位人員的密碼 / Enter password" autocomplete="current-password" />
             </label>
           </div>
 
           <div class="action-buttons">
-            <button id="startBtn" class="primary-btn">開始計時 Start</button>
-            <button id="endBtn" class="secondary-btn">結束計時 End</button>
+            <button id="startBtn" class="primary-btn">開始計時 / Start</button>
+            <button id="endBtn" class="secondary-btn">結束計時 / End</button>
           </div>
 
-          <div class="status-card" id="currentStatus">目前沒有進行中的紀錄。</div>
+          <div class="status-card" id="currentStatus">目前沒有進行中的紀錄。 / No active record.</div>
 
           <div class="today-list-wrap">
             <div class="subsection-title-row">
               <h3>今天的紀錄 / Today's Records</h3>
             </div>
-            <div id="todayRecords" class="record-list empty-state">目前還沒有紀錄，先按下開始計時吧。</div>
+            <div id="todayRecords" class="record-list empty-state">目前還沒有紀錄，先按下開始計時吧。 / No records yet.</div>
           </div>
         </section>
 
         <section class="panel stats-panel">
           <div class="panel-title-row">
             <div>
-              <p class="panel-kicker">前台統計</p>
+              <p class="panel-kicker">前台統計 / Frontend Stats</p>
               <h2>時間分配總覽 / Overview</h2>
             </div>
           </div>
@@ -93,9 +93,9 @@
             <label>
               <span>統計區間 / Range</span>
               <select id="rangeSelect">
-                <option value="day">每日 Day</option>
-                <option value="week">每週 Week</option>
-                <option value="month">每月 Month</option>
+                <option value="day">每日 / Day</option>
+                <option value="week">每週 / Week</option>
+                <option value="month">每月 / Month</option>
               </select>
             </label>
             <label>
@@ -115,7 +115,7 @@
           <div class="person-chart-section">
             <div class="subsection-title-row">
               <h3>各人時間分配圖 / Personal Distribution</h3>
-              <span class="table-tip">每個人都會有自己一張圖與統計說明</span>
+              <span class="table-tip">每個人都會有自己一張圖與統計說明 / One chart per person</span>
             </div>
             <div id="personChartsGrid" class="person-charts-grid"></div>
           </div>
@@ -123,6 +123,6 @@
       </main>
     </div>
 
-    <script type="module" src="frontend.js?v=20260330-7"></script>
+    <script type="module" src="frontend.js"></script>
   </body>
 </html>
