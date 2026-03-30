@@ -211,6 +211,11 @@ body {
   white-space: nowrap;
 }
 
+.diagnostic-box,
+#diagnosticBox {
+  display: none !important;
+}
+
 .grid-layout {
   display: grid;
   grid-template-columns: 430px 1fr;
