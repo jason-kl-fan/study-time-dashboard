@@ -557,6 +557,15 @@ button:hover {
   gap: 18px;
 }
 
+.chart-card canvas {
+  display: block;
+  width: 100%;
+}
+
+#overviewBarChart {
+  min-height: 420px;
+}
+
 .person-chart-card {
   min-height: 320px;
 }

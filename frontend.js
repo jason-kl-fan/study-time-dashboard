@@ -187,10 +187,16 @@ function renderOverviewBar(records) {
         data: aggregateByCategory(records.filter((record) => record.person === person), categories),
         backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
         borderRadius: 12,
+        maxBarThickness: 42,
+        categoryPercentage: 0.72,
+        barPercentage: 0.82,
         datalabels: {
           color: '#4b415f',
           anchor: 'end',
           align: 'top',
+          offset: 6,
+          clamp: true,
+          clip: false,
           font: { weight: '700' },
           formatter: (value) => (value ? formatDuration(value) : '')
         }
@@ -198,8 +204,47 @@ function renderOverviewBar(records) {
     },
     options: {
       responsive: true,
-      plugins: { legend: { position: 'top' }, datalabels: { clamp: true } },
-      scales: { y: { beginAtZero: true, title: { display: true, text: '分鐘 / Minutes' } } }
+      maintainAspectRatio: false,
+      layout: {
+        padding: {
+          top: 18,
+          right: 8,
+          left: 4,
+          bottom: 4
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            padding: 16,
+            boxWidth: 28,
+            usePointStyle: true,
+            pointStyle: 'rectRounded'
+          }
+        },
+        datalabels: { clamp: true, clip: false }
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxRotation: 0,
+            autoSkip: false,
+            padding: 10
+          },
+          grid: {
+            drawBorder: false
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grace: '14%',
+          title: { display: true, text: '分鐘 / Minutes' },
+          grid: {
+            drawBorder: false
+          }
+        }
+      }
     }
   });
 }
