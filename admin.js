@@ -263,9 +263,23 @@ window.removePerson = async function removePerson(person) {
   if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
   const people = normalizePeople(dashboardState.people);
   if (people.length <= 1) return alert('至少要保留一位人員。 / Keep at least one person.');
-  const used = dashboardState.records.some((record) => record.person === person) || dashboardState.activeRecords?.[person];
-  if (used) return alert('這個人員已有使用紀錄，不能刪除。 / Person has data.');
-  await saveDashboardState({ people: people.filter((item) => item.name !== person) });
+
+  const hasRecords = dashboardState.records.some((record) => record.person === person);
+  const hasActive = Boolean(dashboardState.activeRecords?.[person]);
+  const confirmMessage = hasRecords || hasActive
+    ? `確定要刪除 ${person} 嗎？這會連同此人所有歷史紀錄與進行中紀錄一併刪除，且無法復原。 / Delete ${person} and all related records?`
+    : `確定要刪除 ${person} 嗎？ / Delete ${person}?`;
+
+  if (!confirm(confirmMessage)) return;
+
+  const nextActiveRecords = { ...(dashboardState.activeRecords || {}) };
+  delete nextActiveRecords[person];
+
+  await saveDashboardState({
+    people: people.filter((item) => item.name !== person),
+    records: dashboardState.records.filter((record) => record.person !== person),
+    activeRecords: nextActiveRecords
+  });
 };
 
 window.removeCategory = async function removeCategory(category) {
