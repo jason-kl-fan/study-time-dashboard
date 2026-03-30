@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>時光小站｜時間統計儀表板</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=Playfair+Display:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="decor decor-1"></div>
+      <div class="decor decor-2"></div>
+      <div class="decor decor-3"></div>
+
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Bright • Elegant • Focus</p>
+          <h1>時光小站</h1>
+          <p class="hero-text">
+            幫 Sophia 與 Ariel 輕鬆記錄念書、休閒、玩遊戲時間，並用圖表快速掌握每日、每週、每月分配。
+          </p>
+        </div>
+        <div class="hero-card">
+          <div class="hero-badge">✨ 時間紀錄小幫手</div>
+          <p>開始時按下開始，結束時按下結束，系統會自動幫你統計時數。</p>
+        </div>
+      </header>
+
+      <main class="grid-layout">
+        <section class="panel input-panel">
+          <div class="panel-title-row">
+            <div>
+              <p class="panel-kicker">前台輸入</p>
+              <h2>時間紀錄</h2>
+            </div>
+            <span class="live-clock" id="liveClock"></span>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              <span>姓名</span>
+              <select id="personSelect">
+                <option value="Sophia">Sophia</option>
+                <option value="Ariel">Ariel</option>
+              </select>
+            </label>
+
+            <label>
+              <span>項目</span>
+              <select id="categorySelect">
+                <option value="念書">念書</option>
+                <option value="休閒">休閒</option>
+                <option value="玩遊戲">玩遊戲</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="action-buttons">
+            <button id="startBtn" class="primary-btn">開始計時</button>
+            <button id="endBtn" class="secondary-btn">結束計時</button>
+          </div>
+
+          <div class="status-card" id="currentStatus">
+            目前沒有進行中的紀錄。
+          </div>
+
+          <div class="today-list-wrap">
+            <div class="subsection-title-row">
+              <h3>今天的紀錄</h3>
+              <button id="clearDataBtn" class="ghost-btn">清除所有資料</button>
+            </div>
+            <div id="todayRecords" class="record-list empty-state">
+              目前還沒有紀錄，先按下開始計時吧。
+            </div>
+          </div>
+        </section>
+
+        <section class="panel stats-panel">
+          <div class="panel-title-row">
+            <div>
+              <p class="panel-kicker">後台統計</p>
+              <h2>時間分析</h2>
+            </div>
+          </div>
+
+          <div class="filter-bar">
+            <label>
+              <span>統計區間</span>
+              <select id="rangeSelect">
+                <option value="day">每日</option>
+                <option value="week">每週</option>
+                <option value="month">每月</option>
+              </select>
+            </label>
+            <label>
+              <span>人員</span>
+              <select id="statsPersonSelect">
+                <option value="all">全部人員</option>
+                <option value="Sophia">Sophia</option>
+                <option value="Ariel">Ariel</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="summary-cards" id="summaryCards"></div>
+
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>各項目時間比較</h3>
+              <canvas id="barChart"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>時間分配比例</h3>
+              <canvas id="pieChart"></canvas>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <h3>統計明細</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>人員</th>
+                    <th>項目</th>
+                    <th>總時數</th>
+                    <th>總分鐘</th>
+                  </tr>
+                </thead>
+                <tbody id="statsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
