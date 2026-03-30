@@ -566,6 +566,10 @@ button:hover {
   min-height: 500px;
 }
 
+#barChart {
+  min-height: 460px;
+}
+
 .person-chart-card {
   min-height: 320px;
 }

@@ -148,10 +148,72 @@ function renderCharts(records) {
         data: aggregateByCategory(records.filter((record) => record.person === person), categories),
         backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
         borderRadius: 10,
-        datalabels: { color: '#4b415f', anchor: 'end', align: 'top', font: { weight: '700' }, formatter: (value) => (value ? formatDuration(value) : '') }
+        maxBarThickness: 34,
+        categoryPercentage: 0.66,
+        barPercentage: 0.76,
+        datalabels: {
+          display: false,
+          color: '#4b415f',
+          anchor: 'end',
+          align: 'end',
+          font: { weight: '700' },
+          formatter: (value) => (value ? formatDuration(value) : '')
+        }
       }))
     },
-    options: { responsive: true, plugins: { legend: { position: 'top' }, datalabels: { clamp: true } }, scales: { y: { beginAtZero: true, title: { display: true, text: '分鐘 / Minutes' } } } }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: {
+        padding: {
+          top: 18,
+          right: 10,
+          left: 8,
+          bottom: 8
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          align: 'start',
+          labels: {
+            padding: 12,
+            boxWidth: 18,
+            usePointStyle: false,
+            font: {
+              size: 11
+            }
+          }
+        },
+        datalabels: {
+          display: false
+        }
+      },
+      scales: {
+        x: {
+          offset: true,
+          ticks: {
+            maxRotation: 0,
+            autoSkip: false,
+            padding: 8,
+            font: {
+              size: 11
+            }
+          },
+          grid: {
+            drawBorder: false
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grace: '22%',
+          title: { display: true, text: '分鐘 / Minutes' },
+          grid: {
+            drawBorder: false
+          }
+        }
+      }
+    }
   });
   pieChart = new Chart(document.getElementById('pieChart'), {
     type: 'doughnut',
