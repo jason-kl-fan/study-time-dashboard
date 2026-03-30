@@ -751,6 +751,7 @@ th {
 @media (max-width: 640px) {
   .page-shell {
     padding: 18px 10px 32px;
+    overflow-x: hidden;
   }
 
   .hero,
@@ -760,6 +761,7 @@ th {
   .admin-auth-panel {
     padding: 14px;
     border-radius: 18px;
+    min-width: 0;
   }
 
   .hero {
@@ -793,9 +795,7 @@ th {
   .summary-sub,
   .table-tip,
   .mini-pill,
-  label span,
-  th,
-  td {
+  label span {
     font-size: 0.9rem;
     line-height: 1.5;
   }
@@ -835,16 +835,15 @@ th {
   .tag {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 8px;
     align-items: stretch;
     border-radius: 16px;
     padding: 12px;
   }
 
-  .tag > :first-child {
-    grid-column: 1 / -1;
-    font-weight: 700;
+  .tag-name {
+    font-weight: 800;
     word-break: break-word;
   }
 
@@ -852,7 +851,7 @@ th {
     width: 100%;
     min-width: 0;
     white-space: normal;
-    padding: 8px 10px;
+    padding: 10px 12px;
   }
 
   .summary-cards,
@@ -889,22 +888,76 @@ th {
   #overviewBarChart,
   #profilePieChart,
   #pieChart {
-    max-height: 260px;
+    max-height: 320px;
   }
 
-  .table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  .desktop-records-table {
+    display: none;
   }
 
-  table {
-    min-width: 560px;
+  .mobile-record-list {
+    display: grid !important;
+    gap: 12px;
+    margin-top: 14px;
   }
 
-  th,
-  td {
-    padding: 10px 8px;
-    font-size: 0.82rem;
+  .record-detail-card {
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(148, 132, 180, 0.12);
+  }
+
+  .record-detail-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .record-detail-head strong {
+    font-size: 1rem;
+    word-break: break-word;
+  }
+
+  .record-detail-minutes {
+    flex-shrink: 0;
+    font-weight: 800;
+    color: var(--primary-deep);
+  }
+
+  .record-detail-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .record-detail-grid div {
+    display: grid;
+    gap: 4px;
+  }
+
+  .record-detail-label {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .record-detail-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .record-detail-actions .small-btn {
+    width: 100%;
+    padding: 10px 12px;
+  }
+
+  .empty-mobile-card {
+    color: var(--muted);
+    text-align: center;
   }
 
   .table-tip {

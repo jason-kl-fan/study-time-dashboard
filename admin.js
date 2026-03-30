@@ -56,6 +56,7 @@ const statsCategorySelect = document.getElementById('statsCategorySelect');
 const compareModeSelect = document.getElementById('compareModeSelect');
 const summaryCards = document.getElementById('summaryCards');
 const recordsTableBody = document.getElementById('recordsTableBody');
+const recordsCardList = document.getElementById('recordsCardList');
 const newPersonInput = document.getElementById('newPersonInput');
 const newCategoryInput = document.getElementById('newCategoryInput');
 const addPersonBtn = document.getElementById('addPersonBtn');
@@ -69,6 +70,10 @@ const clearDataBtn = document.getElementById('clearDataBtn');
 let dashboardState = { people: [], categories: [], records: [], activeRecords: {}, settings: {} };
 let barChart;
 let pieChart;
+
+function isMobileView() {
+  return window.innerWidth <= 640;
+}
 
 function setSyncStatus(status, text) {
   syncIndicator.className = `status-indicator status-${status}`;
@@ -192,6 +197,20 @@ function renderSummary(currentRecords, previousRecords, compareMode, range) {
   ].map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div><div class="summary-sub">${card.sub}</div></div>`).join('');
 }
 
+function createChartOptionsForMobile() {
+  const mobile = isMobileView();
+  return {
+    mobile,
+    barIndexAxis: mobile ? 'y' : 'x',
+    barAspectRatio: mobile ? 1.05 : 2.1,
+    barMaxHeight: mobile ? 360 : 420,
+    legendPosition: mobile ? 'bottom' : 'top',
+    legendFontSize: mobile ? 10 : 11,
+    pieLabelDisplay: !mobile,
+    pieCutout: mobile ? '58%' : '52%'
+  };
+}
+
 function renderCharts(currentRecords, previousRecords, compareMode, range) {
   const people = personNames(dashboardState.people);
   const categories = dashboardState.categories;
@@ -200,6 +219,7 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
   const chartPreviousRecords = selectedPerson === 'all' ? previousRecords : previousRecords.filter((r) => r.person === selectedPerson);
   const categoryTotals = aggregateByCategory(chartCurrentRecords, categories);
   const previousCategoryTotals = aggregateByCategory(chartPreviousRecords, categories);
+  const mobileOptions = createChartOptionsForMobile();
 
   if (barChart) barChart.destroy();
   if (pieChart) pieChart.destroy();
@@ -215,20 +235,20 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
               data: categoryTotals,
               backgroundColor: CHART_PALETTE[0],
               borderRadius: 10,
-              maxBarThickness: 34,
+              maxBarThickness: mobileOptions.mobile ? 22 : 34,
               categoryPercentage: 0.66,
               barPercentage: 0.76,
-              datalabels: { display: false, color: '#4b415f', formatter: (value) => (value ? formatDuration(value) : '') }
+              datalabels: { display: false }
             },
             {
               label: getRangeLabel(range, true),
               data: previousCategoryTotals,
               backgroundColor: 'rgba(138, 168, 255, 0.72)',
               borderRadius: 10,
-              maxBarThickness: 34,
+              maxBarThickness: mobileOptions.mobile ? 22 : 34,
               categoryPercentage: 0.66,
               barPercentage: 0.76,
-              datalabels: { display: false, color: '#4b415f', formatter: (value) => (value ? formatDuration(value) : '') }
+              datalabels: { display: false }
             }
           ]
         : people.map((person, index) => ({
@@ -236,38 +256,35 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
             data: aggregateByCategory(currentRecords.filter((record) => record.person === person), categories),
             backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
             borderRadius: 10,
-            maxBarThickness: 34,
+            maxBarThickness: mobileOptions.mobile ? 22 : 34,
             categoryPercentage: 0.66,
             barPercentage: 0.76,
-            datalabels: {
-              display: false,
-              color: '#4b415f',
-              formatter: (value) => (value ? formatDuration(value) : '')
-            }
+            datalabels: { display: false }
           }))
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      aspectRatio: 2.1,
+      aspectRatio: mobileOptions.barAspectRatio,
+      indexAxis: mobileOptions.barIndexAxis,
       layout: {
         padding: {
-          top: 12,
-          right: 10,
-          left: 8,
-          bottom: 8
+          top: 8,
+          right: 8,
+          left: 4,
+          bottom: 4
         }
       },
       plugins: {
         legend: {
-          position: 'top',
+          position: mobileOptions.legendPosition,
           align: 'start',
           labels: {
-            padding: 12,
-            boxWidth: 18,
+            padding: mobileOptions.mobile ? 8 : 12,
+            boxWidth: mobileOptions.mobile ? 12 : 18,
             usePointStyle: false,
             font: {
-              size: 11
+              size: mobileOptions.legendFontSize
             }
           }
         },
@@ -277,23 +294,26 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
       },
       scales: {
         x: {
-          offset: true,
+          beginAtZero: true,
+          grace: '12%',
+          title: { display: !mobileOptions.mobile, text: '分鐘' },
           ticks: {
+            autoSkip: true,
             maxRotation: 0,
-            autoSkip: false,
-            padding: 8,
-            font: {
-              size: 11
-            }
+            padding: 6,
+            font: { size: mobileOptions.mobile ? 10 : 11 }
           },
           grid: {
             drawBorder: false
           }
         },
         y: {
-          beginAtZero: true,
-          grace: '12%',
-          title: { display: true, text: '分鐘' },
+          offset: !mobileOptions.mobile,
+          ticks: {
+            autoSkip: false,
+            padding: 6,
+            font: { size: mobileOptions.mobile ? 10 : 11 }
+          },
           grid: {
             drawBorder: false
           }
@@ -314,9 +334,18 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
     },
     options: {
       responsive: true,
+      cutout: mobileOptions.pieCutout,
       plugins: {
-        legend: { position: 'bottom' },
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: mobileOptions.mobile ? 12 : 18,
+            padding: mobileOptions.mobile ? 10 : 14,
+            font: { size: mobileOptions.mobile ? 10 : 11 }
+          }
+        },
         datalabels: {
+          display: mobileOptions.pieLabelDisplay,
           color: '#3d3552',
           font: { weight: '700', size: 12 },
           formatter: (value, context) => {
@@ -334,8 +363,10 @@ function renderRecordsTable(records) {
   const sorted = [...records].sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
   if (!sorted.length) {
     recordsTableBody.innerHTML = '<tr><td colspan="6">目前這個區間沒有資料。</td></tr>';
+    recordsCardList.innerHTML = '<div class="record-detail-card empty-mobile-card">目前這個區間沒有資料。</div>';
     return;
   }
+
   recordsTableBody.innerHTML = sorted.map((record) => `
     <tr>
       <td>${record.person}</td>
@@ -345,6 +376,24 @@ function renderRecordsTable(records) {
       <td>${record.durationMinutes}</td>
       <td><div class="action-cell"><button class="small-btn edit-btn" onclick="window.editRecord('${record.id}')">編輯</button><button class="small-btn delete-btn" onclick="window.deleteRecord('${record.id}')">刪除</button></div></td>
     </tr>
+  `).join('');
+
+  recordsCardList.innerHTML = sorted.map((record) => `
+    <article class="record-detail-card">
+      <div class="record-detail-head">
+        <strong>${record.person}</strong>
+        <span class="record-detail-minutes">${record.durationMinutes} 分鐘</span>
+      </div>
+      <div class="record-detail-grid">
+        <div><span class="record-detail-label">項目</span><span>${displayCategory(record.category)}</span></div>
+        <div><span class="record-detail-label">開始</span><span>${formatDateTime(record.startTime)}</span></div>
+        <div><span class="record-detail-label">結束</span><span>${formatDateTime(record.endTime)}</span></div>
+      </div>
+      <div class="record-detail-actions">
+        <button class="small-btn edit-btn" onclick="window.editRecord('${record.id}')">編輯</button>
+        <button class="small-btn delete-btn" onclick="window.deleteRecord('${record.id}')">刪除</button>
+      </div>
+    </article>
   `).join('');
 }
 
@@ -523,6 +572,7 @@ async function init() {
   statsPersonSelect.addEventListener('change', refreshAdmin);
   statsCategorySelect.addEventListener('change', refreshAdmin);
   compareModeSelect.addEventListener('change', refreshAdmin);
+  window.addEventListener('resize', refreshAdmin);
   try {
     setDiagnostic('開始初始化 Firebase / Firestore...');
     await ensureRemoteState();
