@@ -17,6 +17,8 @@ import {
   getProfileSession
 } from './shared.js';
 
+Chart.register(ChartDataLabels);
+
 const syncIndicator = document.getElementById('syncIndicator');
 const syncLabel = document.getElementById('syncLabel');
 const diagnosticBox = document.getElementById('diagnosticBox');
@@ -46,6 +48,11 @@ function setSyncStatus(status, text) {
 function setDiagnostic(text, isError = false) {
   diagnosticBox.textContent = `診斷訊息：${text}`;
   diagnosticBox.className = isError ? 'diagnostic-box subtle-diagnostic diagnostic-box-error' : 'diagnostic-box subtle-diagnostic';
+}
+
+function percentOf(value, total) {
+  if (!total) return '0%';
+  return `${Math.round((value / total) * 100)}%`;
 }
 
 function renderPeople() {
@@ -81,11 +88,11 @@ function renderProfile() {
   profileStatus.textContent = `${currentUser} 已登入，可查看自己的紀錄與統計。`;
 
   profileSummaryCards.innerHTML = [
-    { label: '總時數', value: formatDuration(totalMinutes) },
-    { label: '筆數', value: `${records.length} 筆` },
-    { label: '主要項目', value: records.length ? categories[totals.indexOf(Math.max(...totals))] : '尚無資料' }
+    { label: '總統計時間', value: formatDuration(totalMinutes), sub: `${records.length} 筆紀錄` },
+    { label: '主要項目', value: records.length ? categories[totals.indexOf(Math.max(...totals))] : '尚無資料', sub: records.length ? percentOf(Math.max(...totals), totalMinutes) : '0%' },
+    { label: '平均每筆', value: records.length ? formatDuration(Math.round(totalMinutes / records.length)) : '0 分鐘', sub: '單筆平均時長' }
   ]
-    .map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div></div>`)
+    .map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div><div class="summary-sub">${card.sub}</div></div>`)
     .join('');
 
   if (profilePieChart) profilePieChart.destroy();
@@ -95,15 +102,34 @@ function renderProfile() {
       labels: categories,
       datasets: [{ data: totals, backgroundColor: categories.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]), borderWidth: 0 }]
     },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' },
+        datalabels: {
+          color: '#3d3552',
+          font: { weight: '700', size: 12 },
+          formatter: (value, context) => {
+            const total = context.dataset.data.reduce((sum, item) => sum + item, 0);
+            if (!value || !total) return '';
+            return `${Math.round((value / total) * 100)}%\n${formatDuration(value)}`;
+          }
+        }
+      }
+    }
   });
 
   profileLegend.innerHTML = categories
     .map((category, index) => `
-      <div class="chart-stat-item">
-        <span class="color-dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
-        <span>${category}</span>
-        <strong>${formatDuration(totals[index])}</strong>
+      <div class="chart-stat-item stat-pill-row">
+        <div class="stat-pill-left">
+          <span class="color-dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
+          <span>${category}</span>
+        </div>
+        <div class="stat-pill-right">
+          <strong>${formatDuration(totals[index])}</strong>
+          <span>${percentOf(totals[index], totalMinutes)}</span>
+        </div>
       </div>
     `)
     .join('');

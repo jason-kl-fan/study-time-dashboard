@@ -23,6 +23,8 @@ import {
   clearAdminSession
 } from './shared.js';
 
+Chart.register(ChartDataLabels);
+
 const syncIndicator = document.getElementById('syncIndicator');
 const syncLabel = document.getElementById('syncLabel');
 const diagnosticBox = document.getElementById('diagnosticBox');
@@ -65,6 +67,11 @@ function setSyncStatus(status, text) {
 function setDiagnostic(text, isError = false) {
   diagnosticBox.textContent = `診斷訊息：${text}`;
   diagnosticBox.className = isError ? 'diagnostic-box subtle-diagnostic diagnostic-box-error' : 'diagnostic-box subtle-diagnostic';
+}
+
+function percentOf(value, total) {
+  if (!total) return '0%';
+  return `${Math.round((value / total) * 100)}%`;
 }
 
 function isAdminUnlocked() {
@@ -133,11 +140,11 @@ function renderSummary(records) {
   const gameMinutes = records.filter((item) => item.category === '玩遊戲').reduce((sum, item) => sum + item.durationMinutes, 0);
 
   summaryCards.innerHTML = [
-    { label: '總時數', value: formatDuration(totalMinutes) },
-    { label: '念書時間', value: formatDuration(studyMinutes) },
-    { label: '休閒＋遊戲', value: formatDuration(leisureMinutes + gameMinutes) }
+    { label: '總統計時間', value: formatDuration(totalMinutes), sub: `${records.length} 筆紀錄` },
+    { label: '念書時間', value: formatDuration(studyMinutes), sub: percentOf(studyMinutes, totalMinutes) },
+    { label: '休閒＋遊戲', value: formatDuration(leisureMinutes + gameMinutes), sub: percentOf(leisureMinutes + gameMinutes, totalMinutes) }
   ]
-    .map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div></div>`)
+    .map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div><div class="summary-sub">${card.sub}</div></div>`)
     .join('');
 }
 
@@ -159,12 +166,19 @@ function renderCharts(records) {
         label: person,
         data: aggregateByCategory(records.filter((record) => record.person === person), categories),
         backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
-        borderRadius: 10
+        borderRadius: 10,
+        datalabels: {
+          color: '#4b415f',
+          anchor: 'end',
+          align: 'top',
+          font: { weight: '700' },
+          formatter: (value) => (value ? formatDuration(value) : '')
+        }
       }))
     },
     options: {
       responsive: true,
-      plugins: { legend: { position: 'top' } },
+      plugins: { legend: { position: 'top' }, datalabels: { clamp: true } },
       scales: { y: { beginAtZero: true, title: { display: true, text: '分鐘' } } }
     }
   });
@@ -175,7 +189,21 @@ function renderCharts(records) {
       labels: categories,
       datasets: [{ data: categoryTotals, backgroundColor: categories.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]), borderWidth: 0 }]
     },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' },
+        datalabels: {
+          color: '#3d3552',
+          font: { weight: '700', size: 12 },
+          formatter: (value, context) => {
+            const total = context.dataset.data.reduce((sum, item) => sum + item, 0);
+            if (!value || !total) return '';
+            return `${Math.round((value / total) * 100)}%\n${formatDuration(value)}`;
+          }
+        }
+      }
+    }
   });
 }
 

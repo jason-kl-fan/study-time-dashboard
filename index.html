@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   </head>
   <body>
     <div class="page-shell">
@@ -31,8 +32,8 @@
             <div class="hero-badge">✨ 前台輸入頁</div>
             <p>第一次新增人員時可設定個人密碼，之後開始 / 結束都要輸入該密碼。</p>
             <div class="hero-link-list">
-              <a class="link-btn" href="profile.html">個人頁面</a>
-              <a class="link-btn" href="admin.html">前往後台管理</a>
+              <a class="link-btn" href="profile.html?v=20260330-7">個人頁面</a>
+              <a class="link-btn" href="admin.html?v=20260330-7">前往後台管理</a>
             </div>
           </div>
         </div>
@@ -108,6 +109,7 @@
           <div class="chart-card mt-18">
             <h3>整體比較 / Overall Comparison</h3>
             <canvas id="overviewBarChart"></canvas>
+            <div id="overviewBreakdown" class="chart-stats-list"></div>
           </div>
 
           <div class="person-chart-section">
@@ -121,6 +123,6 @@
       </main>
     </div>
 
-    <script type="module" src="frontend.js?v=20260330-6"></script>
+    <script type="module" src="frontend.js?v=20260330-7"></script>
   </body>
 </html>

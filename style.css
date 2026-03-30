@@ -512,6 +512,32 @@ button:hover {
   font-weight: 800;
 }
 
+.summary-sub {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.stat-pill-row {
+  justify-content: space-between;
+  border-bottom: 1px dashed rgba(148, 132, 180, 0.16);
+}
+
+.stat-pill-left,
+.stat-pill-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat-pill-right {
+  color: var(--muted);
+}
+
+.stat-pill-right strong {
+  color: var(--text);
+}
+
 .charts-grid {
   margin-top: 20px;
   display: grid;

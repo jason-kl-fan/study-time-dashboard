@@ -16,6 +16,8 @@ import {
   verifyPassword
 } from './shared.js';
 
+Chart.register(ChartDataLabels);
+
 const liveClock = document.getElementById('liveClock');
 const syncIndicator = document.getElementById('syncIndicator');
 const syncLabel = document.getElementById('syncLabel');
@@ -30,6 +32,7 @@ const todayRecords = document.getElementById('todayRecords');
 const rangeSelect = document.getElementById('rangeSelect');
 const overviewPersonSelect = document.getElementById('overviewPersonSelect');
 const summaryCards = document.getElementById('summaryCards');
+const overviewBreakdown = document.getElementById('overviewBreakdown');
 const personChartsGrid = document.getElementById('personChartsGrid');
 
 let dashboardState = { people: [], categories: [], records: [], activeRecords: {}, settings: {} };
@@ -53,6 +56,11 @@ function setSyncStatus(status, text) {
 function setDiagnostic(text, isError = false) {
   diagnosticBox.textContent = `診斷訊息：${text}`;
   diagnosticBox.className = isError ? 'diagnostic-box subtle-diagnostic diagnostic-box-error' : 'diagnostic-box subtle-diagnostic';
+}
+
+function percentOf(value, total) {
+  if (!total) return '0%';
+  return `${Math.round((value / total) * 100)}%`;
 }
 
 function renderSelectOptions() {
@@ -118,11 +126,41 @@ function renderSummary(records) {
   const gameMinutes = records.filter((record) => record.category === '玩遊戲').reduce((sum, record) => sum + record.durationMinutes, 0);
 
   summaryCards.innerHTML = [
-    { label: '總時數', value: formatDuration(totalMinutes) },
-    { label: '念書時間', value: formatDuration(studyMinutes) },
-    { label: '休閒＋遊戲', value: formatDuration(leisureMinutes + gameMinutes) }
+    { label: '總統計時間', value: formatDuration(totalMinutes), sub: `${records.length} 筆紀錄` },
+    { label: '念書時間', value: formatDuration(studyMinutes), sub: percentOf(studyMinutes, totalMinutes) },
+    { label: '休閒＋遊戲', value: formatDuration(leisureMinutes + gameMinutes), sub: percentOf(leisureMinutes + gameMinutes, totalMinutes) }
   ]
-    .map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div></div>`)
+    .map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div><div class="summary-sub">${card.sub}</div></div>`)
+    .join('');
+}
+
+function renderOverviewBreakdown(records) {
+  const categories = dashboardState.categories;
+  const totals = aggregateByCategory(records, categories);
+  const totalMinutes = totals.reduce((sum, value) => sum + value, 0);
+
+  if (!totalMinutes) {
+    overviewBreakdown.className = 'chart-stats-list empty-state';
+    overviewBreakdown.textContent = '目前這個統計區間還沒有資料。';
+    return;
+  }
+
+  overviewBreakdown.className = 'chart-stats-list';
+  overviewBreakdown.innerHTML = categories
+    .map(
+      (category, index) => `
+        <div class="chart-stat-item stat-pill-row">
+          <div class="stat-pill-left">
+            <span class="color-dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
+            <span>${category}</span>
+          </div>
+          <div class="stat-pill-right">
+            <strong>${formatDuration(totals[index])}</strong>
+            <span>${percentOf(totals[index], totalMinutes)}</span>
+          </div>
+        </div>
+      `
+    )
     .join('');
 }
 
@@ -140,12 +178,22 @@ function renderOverviewBar(records) {
         label: person,
         data: aggregateByCategory(records.filter((record) => record.person === person), categories),
         backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
-        borderRadius: 12
+        borderRadius: 12,
+        datalabels: {
+          color: '#4b415f',
+          anchor: 'end',
+          align: 'top',
+          font: { weight: '700' },
+          formatter: (value) => (value ? formatDuration(value) : '')
+        }
       }))
     },
     options: {
       responsive: true,
-      plugins: { legend: { position: 'top' } },
+      plugins: {
+        legend: { position: 'top' },
+        datalabels: { clamp: true }
+      },
       scales: {
         y: {
           beginAtZero: true,
@@ -173,6 +221,7 @@ function renderPersonCharts(records) {
           </div>
           <canvas id="personChart-${index}"></canvas>
           <div class="chart-stats-note" id="personChartNote-${index}"></div>
+          <div class="chart-stats-list" id="personChartStats-${index}"></div>
         </article>
       `
     )
@@ -185,10 +234,30 @@ function renderPersonCharts(records) {
 
     const ctx = document.getElementById(`personChart-${index}`);
     const note = document.getElementById(`personChartNote-${index}`);
+    const stats = document.getElementById(`personChartStats-${index}`);
 
     note.textContent = totalMinutes
       ? `總計 ${formatDuration(totalMinutes)}，主要分配：${categories[totals.indexOf(Math.max(...totals))] || '尚無資料'}`
       : '目前這個區間尚無資料。';
+
+    stats.innerHTML = totalMinutes
+      ? categories
+          .map(
+            (category, i) => `
+              <div class="chart-stat-item stat-pill-row">
+                <div class="stat-pill-left">
+                  <span class="color-dot" style="background:${CHART_PALETTE[i % CHART_PALETTE.length]}"></span>
+                  <span>${category}</span>
+                </div>
+                <div class="stat-pill-right">
+                  <strong>${formatDuration(totals[i])}</strong>
+                  <span>${percentOf(totals[i], totalMinutes)}</span>
+                </div>
+              </div>
+            `
+          )
+          .join('')
+      : '<div class="empty-state">尚無可顯示數據。</div>';
 
     personCharts.push(
       new Chart(ctx, {
@@ -203,7 +272,18 @@ function renderPersonCharts(records) {
         },
         options: {
           responsive: true,
-          plugins: { legend: { position: 'bottom' } }
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: {
+              color: '#3d3552',
+              font: { weight: '700', size: 12 },
+              formatter: (value, context) => {
+                const total = context.dataset.data.reduce((sum, item) => sum + item, 0);
+                if (!value || !total) return '';
+                return `${Math.round((value / total) * 100)}%\n${formatDuration(value)}`;
+              }
+            }
+          }
         }
       })
     );
@@ -220,6 +300,7 @@ function refreshFrontend() {
   renderTodayRecords();
   const records = collectOverviewRecords();
   renderSummary(records);
+  renderOverviewBreakdown(records);
   renderOverviewBar(records);
   renderPersonCharts(records);
 }
