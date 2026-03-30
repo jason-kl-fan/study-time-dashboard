@@ -2,11 +2,127 @@
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="refresh" content="0; url=personal.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Redirecting to Profile</title>
+    <title>時光小站 / Time Station｜個人頁面 / Personal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   </head>
   <body>
-    <p>頁面跳轉中… 如果沒有自動跳轉，請點這裡：<a href="personal.html">profile / 個人頁面</a></p>
+    <div class="page-shell">
+      <div class="decor decor-1"></div>
+      <div class="decor decor-2"></div>
+      <div class="decor decor-3"></div>
+
+      <header class="hero compact-hero hero-with-indicator">
+        <div>
+          <p class="eyebrow">Personal • Login • Password</p>
+          <h1>時光小站 / Time Station｜個人頁 / Personal</h1>
+          <p class="hero-text">每位人員可登入自己的頁面，查看個人統計並修改自己的密碼。 / Personal stats and password management.</p>
+        </div>
+        <div class="hero-top-right">
+          <div class="status-indicator status-loading" id="syncIndicator" title="雲端同步狀態 / Cloud Sync：初始化中 / Initializing">
+            <span class="status-dot"></span>
+            <span class="status-label" id="syncLabel">初始化中 / Initializing</span>
+          </div>
+          <div class="hero-card">
+            <div class="hero-badge">🔐 個人專屬頁 / Personal Area</div>
+            <p>登入後可看到自己的資料，不需要看到全部人的管理功能。 / Private personal view only.</p>
+            <div class="hero-link-list">
+              <a class="link-btn" href="index.html">回前台 / Frontend</a>
+              <a class="link-btn" href="admin.html">後台管理 / Admin</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="frontend-layout profile-layout">
+        <section class="panel input-panel">
+          <div class="panel-title-row">
+            <div>
+              <p class="panel-kicker">個人登入 / Personal Login</p>
+              <h2>登入 / 修改密碼 • Login / Change Password</h2>
+            </div>
+          </div>
+
+          <div class="diagnostic-box subtle-diagnostic" id="diagnosticBox">診斷訊息 / Diagnostic：等待初始化... / Waiting...</div>
+
+          <div class="form-grid single-column">
+            <label>
+              <span>姓名 / Name</span>
+              <select id="loginPersonSelect"></select>
+            </label>
+            <label>
+              <span>密碼 / Password</span>
+              <input id="loginPasswordInput" type="password" placeholder="輸入密碼登入 / Enter password" autocomplete="current-password" />
+            </label>
+          </div>
+
+          <div class="action-buttons">
+            <button id="loginBtn" class="primary-btn">登入 / Login</button>
+            <button id="logoutBtn" class="secondary-btn">登出 / Logout</button>
+          </div>
+
+          <div class="status-card" id="profileStatus">尚未登入。 / Not logged in.</div>
+
+          <div class="settings-card">
+            <div class="subsection-title-row">
+              <h3>修改密碼 / Change Password</h3>
+            </div>
+            <div class="form-grid single-column">
+              <label>
+                <span>目前密碼 / Current Password</span>
+                <input id="currentPasswordInput" type="password" placeholder="輸入目前密碼 / Current password" autocomplete="current-password" />
+              </label>
+              <label>
+                <span>新密碼 / New Password</span>
+                <input id="newPasswordInput" type="password" placeholder="輸入新密碼 / New password" autocomplete="new-password" />
+              </label>
+            </div>
+            <button id="changePasswordBtn" class="ghost-btn mt-12">更新密碼 / Update Password</button>
+          </div>
+        </section>
+
+        <section class="panel stats-panel">
+          <div class="panel-title-row">
+            <div>
+              <p class="panel-kicker">個人統計 / Personal Stats</p>
+              <h2>我的時間狀況 / My Stats</h2>
+            </div>
+          </div>
+
+          <div class="filter-bar one-col">
+            <label>
+              <span>統計區間 / Range</span>
+              <select id="profileRangeSelect">
+                <option value="day">每日 / Day</option>
+                <option value="week">每週 / Week</option>
+                <option value="month">每月 / Month</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="summary-cards" id="profileSummaryCards"></div>
+
+          <div class="chart-card mt-18">
+            <h3>我的時間分配 / My Distribution</h3>
+            <canvas id="profilePieChart"></canvas>
+            <div id="profileLegend" class="chart-stats-list"></div>
+          </div>
+
+          <div class="table-card mt-18">
+            <div class="subsection-title-row">
+              <h3>我的紀錄 / My Records</h3>
+            </div>
+            <div id="profileRecords" class="record-list empty-state">登入後即可查看自己的紀錄。 / Login to view records.</div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="personal.js"></script>
   </body>
 </html>
