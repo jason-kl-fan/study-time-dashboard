@@ -187,27 +187,23 @@ function renderOverviewBar(records) {
         data: aggregateByCategory(records.filter((record) => record.person === person), categories),
         backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
         borderRadius: 12,
-        maxBarThickness: 38,
+        maxBarThickness: 34,
         categoryPercentage: 0.68,
         barPercentage: 0.78,
         datalabels: {
+          display: false,
           color: '#4b415f',
-          anchor: 'end',
-          align: 'end',
-          offset: 2,
-          clamp: true,
-          clip: true,
-          font: { weight: '700', size: 11 },
           formatter: (value) => (value ? formatDuration(value) : '')
         }
       }))
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
+      maintainAspectRatio: true,
+      aspectRatio: 2.15,
       layout: {
         padding: {
-          top: 36,
+          top: 12,
           right: 10,
           left: 6,
           bottom: 6
@@ -219,20 +215,27 @@ function renderOverviewBar(records) {
           align: 'start',
           labels: {
             padding: 12,
-            boxWidth: 22,
-            usePointStyle: false
+            boxWidth: 18,
+            usePointStyle: false,
+            font: {
+              size: 11
+            }
           }
         },
-        datalabels: { clamp: true, clip: true }
+        datalabels: {
+          display: false
+        }
       },
       scales: {
         x: {
-          stacked: false,
           offset: true,
           ticks: {
             maxRotation: 0,
             autoSkip: false,
-            padding: 10
+            padding: 10,
+            font: {
+              size: 11
+            }
           },
           grid: {
             drawBorder: false
@@ -240,7 +243,7 @@ function renderOverviewBar(records) {
         },
         y: {
           beginAtZero: true,
-          grace: '24%',
+          grace: '12%',
           title: { display: true, text: '分鐘 / Minutes' },
           grid: {
             drawBorder: false
