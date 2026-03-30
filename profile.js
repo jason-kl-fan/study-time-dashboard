@@ -18,10 +18,13 @@ import {
   displayCategory
 } from './shared.js';
 
+window.__bootStatus?.('個人頁模組已載入 / Profile module loaded');
 if (window.ChartDataLabels) {
   Chart.register(window.ChartDataLabels);
+  window.__bootStatus?.('個人頁圖表插件已載入 / Chart plugin ready');
 } else {
   console.warn('ChartDataLabels plugin not loaded; continuing without datalabels.');
+  window.__bootStatus?.('個人頁圖表插件缺失，略過 / Chart plugin missing, skipped');
 }
 
 const syncIndicator = document.getElementById('syncIndicator');

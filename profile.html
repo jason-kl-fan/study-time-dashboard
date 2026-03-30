@@ -123,6 +123,23 @@
       </main>
     </div>
 
+    <script>
+      window.__bootStatus = function (message) {
+        const label = document.getElementById('syncLabel');
+        const diag = document.getElementById('diagnosticBox');
+        if (label) label.textContent = message;
+        if (diag) diag.textContent = `診斷訊息 / Diagnostic：${message}`;
+      };
+      window.__bootFail = function (message) {
+        const indicator = document.getElementById('syncIndicator');
+        const label = document.getElementById('syncLabel');
+        const diag = document.getElementById('diagnosticBox');
+        if (indicator) indicator.className = 'status-indicator status-error';
+        if (label) label.textContent = '初始化失敗 / Init Failed';
+        if (diag) diag.textContent = `診斷訊息 / Diagnostic：${message}`;
+      };
+      window.__bootStatus('準備載入個人頁模組 / Loading profile module...');
+    </script>
     <script type="module" src="profile.js"></script>
   </body>
 </html>

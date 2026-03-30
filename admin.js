@@ -25,10 +25,13 @@ import {
   renameCategoryInState
 } from './shared.js';
 
+window.__bootStatus?.('後台模組已載入 / Admin module loaded');
 if (window.ChartDataLabels) {
   Chart.register(window.ChartDataLabels);
+  window.__bootStatus?.('後台圖表插件已載入 / Chart plugin ready');
 } else {
   console.warn('ChartDataLabels plugin not loaded; continuing without datalabels.');
+  window.__bootStatus?.('後台圖表插件缺失，略過 / Chart plugin missing, skipped');
 }
 
 const syncIndicator = document.getElementById('syncIndicator');
