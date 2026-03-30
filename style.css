@@ -427,10 +427,71 @@ th {
   color: var(--danger);
 }
 
+.compact-hero {
+  margin-bottom: 22px;
+}
+
+.frontend-layout {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 24px;
+}
+
+.admin-layout {
+  grid-template-columns: 360px 1fr;
+}
+
+.two-col-tight {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.person-chart-section {
+  margin-top: 20px;
+}
+
+.person-charts-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.person-chart-card {
+  min-height: 360px;
+}
+
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--primary-deep);
+  text-decoration: none;
+  font-weight: 800;
+  border: 1px solid var(--border);
+}
+
+.no-margin-top {
+  margin-top: 0;
+}
+
+.mt-18 {
+  margin-top: 18px;
+}
+
 @media (max-width: 1024px) {
   .hero,
   .grid-layout,
-  .charts-grid {
+  .charts-grid,
+  .frontend-layout,
+  .person-charts-grid {
     grid-template-columns: 1fr;
   }
 }

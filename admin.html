@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>時光小站｜後台管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="decor decor-1"></div>
+      <div class="decor decor-2"></div>
+      <div class="decor decor-3"></div>
+
+      <header class="hero compact-hero">
+        <div>
+          <p class="eyebrow">Admin • Dashboard • Export</p>
+          <h1>時光小站｜後台</h1>
+          <p class="hero-text">後台提供完整的人員 / 項目設定、統計分析、單筆編輯刪除與資料匯出。</p>
+        </div>
+        <div class="hero-card">
+          <div class="hero-badge">🛠️ 後台管理頁</div>
+          <p>如果只需要輸入時間，請使用前台頁面。</p>
+          <a class="link-btn" href="index.html">回到前台</a>
+        </div>
+      </header>
+
+      <main class="grid-layout admin-layout">
+        <section class="panel input-panel">
+          <div class="panel-title-row">
+            <div>
+              <p class="panel-kicker">設定區</p>
+              <h2>人員與項目管理</h2>
+            </div>
+          </div>
+
+          <div class="settings-card no-margin-top">
+            <div class="inline-creator-row">
+              <input id="newPersonInput" type="text" placeholder="新增人員名稱，例如 Mia" />
+              <button id="addPersonBtn" class="ghost-btn">新增人員</button>
+            </div>
+            <div id="peopleTags" class="tag-list"></div>
+
+            <div class="inline-creator-row mt-12">
+              <input id="newCategoryInput" type="text" placeholder="新增項目名稱，例如 運動" />
+              <button id="addCategoryBtn" class="ghost-btn">新增項目</button>
+            </div>
+            <div id="categoryTags" class="tag-list"></div>
+          </div>
+
+          <div class="today-list-wrap">
+            <div class="subsection-title-row">
+              <h3>資料工具</h3>
+              <div class="button-row-wrap">
+                <button id="exportCsvBtn" class="ghost-btn">匯出 CSV</button>
+                <button id="exportExcelBtn" class="ghost-btn">匯出 Excel</button>
+                <button id="clearDataBtn" class="ghost-btn danger-btn">清除所有資料</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel stats-panel">
+          <div class="panel-title-row">
+            <div>
+              <p class="panel-kicker">後台統計</p>
+              <h2>完整資料分析</h2>
+            </div>
+          </div>
+
+          <div class="filter-bar three-col">
+            <label>
+              <span>統計區間</span>
+              <select id="rangeSelect">
+                <option value="day">每日</option>
+                <option value="week">每週</option>
+                <option value="month">每月</option>
+              </select>
+            </label>
+            <label>
+              <span>人員</span>
+              <select id="statsPersonSelect"></select>
+            </label>
+            <label>
+              <span>項目篩選</span>
+              <select id="statsCategorySelect"></select>
+            </label>
+          </div>
+
+          <div class="summary-cards" id="summaryCards"></div>
+
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>各項目時間比較</h3>
+              <canvas id="barChart"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>時間分配比例</h3>
+              <canvas id="pieChart"></canvas>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <div class="subsection-title-row">
+              <h3>統計明細</h3>
+              <span class="table-tip">可直接編輯、刪除單筆資料</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>人員</th>
+                    <th>項目</th>
+                    <th>開始</th>
+                    <th>結束</th>
+                    <th>分鐘</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="recordsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>
