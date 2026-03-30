@@ -1,7 +1,9 @@
 const STORAGE_KEY = 'study-time-dashboard-records';
 const ACTIVE_KEY = 'study-time-dashboard-active';
-const PEOPLE = ['Sophia', 'Ariel'];
-const CATEGORIES = ['念書', '休閒', '玩遊戲'];
+const PEOPLE_KEY = 'study-time-dashboard-people';
+const CATEGORY_KEY = 'study-time-dashboard-categories';
+const DEFAULT_PEOPLE = ['Sophia', 'Ariel'];
+const DEFAULT_CATEGORIES = ['念書', '休閒', '玩遊戲'];
 
 const liveClock = document.getElementById('liveClock');
 const personSelect = document.getElementById('personSelect');
@@ -11,13 +13,50 @@ const endBtn = document.getElementById('endBtn');
 const currentStatus = document.getElementById('currentStatus');
 const todayRecords = document.getElementById('todayRecords');
 const clearDataBtn = document.getElementById('clearDataBtn');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
+const exportExcelBtn = document.getElementById('exportExcelBtn');
 const rangeSelect = document.getElementById('rangeSelect');
 const statsPersonSelect = document.getElementById('statsPersonSelect');
+const statsCategorySelect = document.getElementById('statsCategorySelect');
 const summaryCards = document.getElementById('summaryCards');
-const statsTableBody = document.getElementById('statsTableBody');
+const recordsTableBody = document.getElementById('recordsTableBody');
+const newPersonInput = document.getElementById('newPersonInput');
+const newCategoryInput = document.getElementById('newCategoryInput');
+const addPersonBtn = document.getElementById('addPersonBtn');
+const addCategoryBtn = document.getElementById('addCategoryBtn');
+const peopleTags = document.getElementById('peopleTags');
+const categoryTags = document.getElementById('categoryTags');
 
 let barChart;
 let pieChart;
+
+function uid() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getStoredList(key, fallback) {
+  return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+}
+
+function saveStoredList(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getPeople() {
+  return getStoredList(PEOPLE_KEY, DEFAULT_PEOPLE);
+}
+
+function savePeople(value) {
+  saveStoredList(PEOPLE_KEY, value);
+}
+
+function getCategories() {
+  return getStoredList(CATEGORY_KEY, DEFAULT_CATEGORIES);
+}
+
+function saveCategories(value) {
+  saveStoredList(CATEGORY_KEY, value);
+}
 
 function getRecords() {
   return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -48,6 +87,12 @@ function formatDateTime(dateString) {
     hour: '2-digit',
     minute: '2-digit'
   }).format(date);
+}
+
+function toDatetimeLocalValue(dateString) {
+  const date = new Date(dateString);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function formatDuration(minutes) {
@@ -91,6 +136,36 @@ function tickClock() {
     minute: '2-digit',
     second: '2-digit'
   }).format(new Date());
+}
+
+function renderSelectOptions() {
+  const people = getPeople();
+  const categories = getCategories();
+
+  personSelect.innerHTML = people.map((person) => `<option value="${person}">${person}</option>`).join('');
+  categorySelect.innerHTML = categories.map((category) => `<option value="${category}">${category}</option>`).join('');
+
+  statsPersonSelect.innerHTML = ['<option value="all">全部人員</option>']
+    .concat(people.map((person) => `<option value="${person}">${person}</option>`))
+    .join('');
+
+  statsCategorySelect.innerHTML = ['<option value="all">全部項目</option>']
+    .concat(categories.map((category) => `<option value="${category}">${category}</option>`))
+    .join('');
+}
+
+function renderTags() {
+  peopleTags.innerHTML = getPeople()
+    .map(
+      (person) => `<span class="tag">${person}<button type="button" onclick="removePerson('${person.replace(/'/g, "\\'")}')">×</button></span>`
+    )
+    .join('');
+
+  categoryTags.innerHTML = getCategories()
+    .map(
+      (category) => `<span class="tag">${category}<button type="button" onclick="removeCategory('${category.replace(/'/g, "\\'")}')">×</button></span>`
+    )
+    .join('');
 }
 
 function renderCurrentStatus() {
@@ -141,13 +216,15 @@ function collectStats() {
   const records = getRecords();
   const range = rangeSelect.value;
   const selectedPerson = statsPersonSelect.value;
+  const selectedCategory = statsCategorySelect.value;
   const rangeStart = getRangeStart(range);
 
   return records.filter((record) => {
     const start = new Date(record.startTime);
     const inRange = start >= rangeStart;
     const personMatch = selectedPerson === 'all' ? true : record.person === selectedPerson;
-    return inRange && personMatch;
+    const categoryMatch = selectedCategory === 'all' ? true : record.category === selectedCategory;
+    return inRange && personMatch && categoryMatch;
   });
 }
 
@@ -181,58 +258,33 @@ function renderSummary(records) {
     .join('');
 }
 
-function aggregateByCategory(records) {
-  return CATEGORIES.map((category) =>
+function aggregateByCategory(records, categories) {
+  return categories.map((category) =>
     records
       .filter((record) => record.category === category)
       .reduce((sum, record) => sum + record.durationMinutes, 0)
   );
 }
 
-function aggregateTable(records) {
-  const map = new Map();
-
-  records.forEach((record) => {
-    const key = `${record.person}__${record.category}`;
-    map.set(key, (map.get(key) || 0) + record.durationMinutes);
-  });
-
-  return Array.from(map.entries()).map(([key, total]) => {
-    const [person, category] = key.split('__');
-    return { person, category, total };
-  });
-}
-
-function renderTable(records) {
-  const rows = aggregateTable(records);
-
-  if (!rows.length) {
-    statsTableBody.innerHTML = '<tr><td colspan="4">目前這個區間沒有資料。</td></tr>';
-    return;
-  }
-
-  statsTableBody.innerHTML = rows
-    .map(
-      (row) => `
-        <tr>
-          <td>${row.person}</td>
-          <td>${row.category}</td>
-          <td>${formatDuration(row.total)}</td>
-          <td>${row.total}</td>
-        </tr>
-      `
-    )
-    .join('');
-}
-
 function renderCharts(records) {
+  const people = getPeople();
+  const categories = getCategories();
   const selectedPerson = statsPersonSelect.value;
   const chartRecords = selectedPerson === 'all' ? records : records.filter((r) => r.person === selectedPerson);
-  const categoryTotals = aggregateByCategory(chartRecords);
+  const categoryTotals = aggregateByCategory(chartRecords, categories);
 
-  const groupedByPerson = PEOPLE.map((person) => ({
+  const palette = [
+    'rgba(255, 138, 161, 0.75)',
+    'rgba(138, 168, 255, 0.75)',
+    'rgba(255, 216, 140, 0.82)',
+    'rgba(146, 220, 189, 0.82)',
+    'rgba(191, 160, 255, 0.82)',
+    'rgba(255, 170, 120, 0.82)'
+  ];
+
+  const groupedByPerson = people.map((person) => ({
     person,
-    totals: aggregateByCategory(records.filter((record) => record.person === person))
+    totals: aggregateByCategory(records.filter((record) => record.person === person), categories)
   }));
 
   if (barChart) barChart.destroy();
@@ -241,28 +293,21 @@ function renderCharts(records) {
   barChart = new Chart(document.getElementById('barChart'), {
     type: 'bar',
     data: {
-      labels: CATEGORIES,
+      labels: categories,
       datasets: groupedByPerson.map((item, index) => ({
         label: item.person,
         data: item.totals,
-        backgroundColor: index === 0 ? 'rgba(255, 138, 161, 0.75)' : 'rgba(138, 168, 255, 0.75)',
+        backgroundColor: palette[index % palette.length],
         borderRadius: 10
       }))
     },
     options: {
       responsive: true,
-      plugins: {
-        legend: {
-          position: 'top'
-        }
-      },
+      plugins: { legend: { position: 'top' } },
       scales: {
         y: {
           beginAtZero: true,
-          title: {
-            display: true,
-            text: '分鐘'
-          }
+          title: { display: true, text: '分鐘' }
         }
       }
     }
@@ -271,35 +316,244 @@ function renderCharts(records) {
   pieChart = new Chart(document.getElementById('pieChart'), {
     type: 'doughnut',
     data: {
-      labels: CATEGORIES,
+      labels: categories,
       datasets: [
         {
           data: categoryTotals,
-          backgroundColor: [
-            'rgba(255, 138, 161, 0.8)',
-            'rgba(255, 216, 140, 0.85)',
-            'rgba(138, 168, 255, 0.82)'
-          ],
+          backgroundColor: categories.map((_, index) => palette[index % palette.length]),
           borderWidth: 0
         }
       ]
     },
     options: {
       responsive: true,
-      plugins: {
-        legend: {
-          position: 'bottom'
-        }
-      }
+      plugins: { legend: { position: 'bottom' } }
     }
   });
+}
+
+function renderRecordsTable(records) {
+  const sorted = [...records].sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+
+  if (!sorted.length) {
+    recordsTableBody.innerHTML = '<tr><td colspan="6">目前這個區間沒有資料。</td></tr>';
+    return;
+  }
+
+  recordsTableBody.innerHTML = sorted
+    .map(
+      (record) => `
+        <tr>
+          <td>${record.person}</td>
+          <td>${record.category}</td>
+          <td>${formatDateTime(record.startTime)}</td>
+          <td>${formatDateTime(record.endTime)}</td>
+          <td>${record.durationMinutes}</td>
+          <td>
+            <div class="action-cell">
+              <button class="small-btn edit-btn" onclick="editRecord('${record.id}')">編輯</button>
+              <button class="small-btn delete-btn" onclick="deleteRecord('${record.id}')">刪除</button>
+            </div>
+          </td>
+        </tr>
+      `
+    )
+    .join('');
 }
 
 function renderStats() {
   const statsRecords = collectStats();
   renderSummary(statsRecords);
   renderCharts(statsRecords);
-  renderTable(statsRecords);
+  renderRecordsTable(statsRecords);
+}
+
+function recalcDuration(startTime, endTime) {
+  return Math.max(1, Math.round((new Date(endTime) - new Date(startTime)) / 60000));
+}
+
+function addPerson() {
+  const value = newPersonInput.value.trim();
+  if (!value) return;
+  const people = getPeople();
+  if (people.includes(value)) {
+    alert('這個人員已存在。');
+    return;
+  }
+  people.push(value);
+  savePeople(people);
+  newPersonInput.value = '';
+  refreshAll();
+}
+
+function addCategory() {
+  const value = newCategoryInput.value.trim();
+  if (!value) return;
+  const categories = getCategories();
+  if (categories.includes(value)) {
+    alert('這個項目已存在。');
+    return;
+  }
+  categories.push(value);
+  saveCategories(categories);
+  newCategoryInput.value = '';
+  refreshAll();
+}
+
+window.removePerson = function removePerson(person) {
+  const people = getPeople();
+  if (people.length <= 1) {
+    alert('至少要保留一位人員。');
+    return;
+  }
+  const used = getRecords().some((record) => record.person === person) || (getActiveRecord() && getActiveRecord().person === person);
+  if (used) {
+    alert('這個人員已經有使用紀錄，暫時不能刪除。');
+    return;
+  }
+  savePeople(people.filter((item) => item !== person));
+  refreshAll();
+};
+
+window.removeCategory = function removeCategory(category) {
+  const categories = getCategories();
+  if (categories.length <= 1) {
+    alert('至少要保留一個項目。');
+    return;
+  }
+  const used = getRecords().some((record) => record.category === category) || (getActiveRecord() && getActiveRecord().category === category);
+  if (used) {
+    alert('這個項目已經有使用紀錄，暫時不能刪除。');
+    return;
+  }
+  saveCategories(categories.filter((item) => item !== category));
+  refreshAll();
+};
+
+window.deleteRecord = function deleteRecord(id) {
+  const ok = confirm('確定要刪除這筆紀錄嗎？');
+  if (!ok) return;
+  saveRecords(getRecords().filter((record) => record.id !== id));
+  refreshAll();
+};
+
+window.editRecord = function editRecord(id) {
+  const records = getRecords();
+  const record = records.find((item) => item.id === id);
+  if (!record) return;
+
+  const people = getPeople().join(' / ');
+  const categories = getCategories().join(' / ');
+
+  const person = prompt(`請輸入人員名稱（可用：${people}）`, record.person);
+  if (!person) return;
+  const category = prompt(`請輸入項目名稱（可用：${categories}）`, record.category);
+  if (!category) return;
+  const start = prompt('請輸入開始時間（格式：YYYY-MM-DDTHH:mm）', toDatetimeLocalValue(record.startTime));
+  if (!start) return;
+  const end = prompt('請輸入結束時間（格式：YYYY-MM-DDTHH:mm）', toDatetimeLocalValue(record.endTime));
+  if (!end) return;
+
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+    alert('時間格式不正確，或結束時間必須晚於開始時間。');
+    return;
+  }
+
+  if (!getPeople().includes(person)) {
+    alert('人員不存在，請先新增該人員。');
+    return;
+  }
+  if (!getCategories().includes(category)) {
+    alert('項目不存在，請先新增該項目。');
+    return;
+  }
+
+  const updated = records.map((item) =>
+    item.id === id
+      ? {
+          ...item,
+          person,
+          category,
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+          durationMinutes: recalcDuration(startDate.toISOString(), endDate.toISOString())
+        }
+      : item
+  );
+
+  saveRecords(updated);
+  refreshAll();
+};
+
+function downloadBlob(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportCsv() {
+  const records = getRecords();
+  if (!records.length) {
+    alert('目前沒有資料可以匯出。');
+    return;
+  }
+
+  const rows = [
+    ['人員', '項目', '開始時間', '結束時間', '分鐘數'],
+    ...records.map((record) => [record.person, record.category, record.startTime, record.endTime, record.durationMinutes])
+  ];
+
+  const csv = rows
+    .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(','))
+    .join('\n');
+
+  downloadBlob('study-time-records.csv', new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
+}
+
+function exportExcel() {
+  const records = getRecords();
+  if (!records.length) {
+    alert('目前沒有資料可以匯出。');
+    return;
+  }
+
+  const worksheet = XLSX.utils.json_to_sheet(
+    records.map((record) => ({
+      人員: record.person,
+      項目: record.category,
+      開始時間: formatDateTime(record.startTime),
+      結束時間: formatDateTime(record.endTime),
+      分鐘數: record.durationMinutes
+    }))
+  );
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, '時間紀錄');
+  XLSX.writeFile(workbook, 'study-time-records.xlsx');
+}
+
+function refreshAll() {
+  const currentStatsPerson = statsPersonSelect.value;
+  const currentStatsCategory = statsCategorySelect.value;
+  const currentPerson = personSelect.value;
+  const currentCategory = categorySelect.value;
+
+  renderSelectOptions();
+  renderTags();
+
+  if ([...personSelect.options].some((option) => option.value === currentPerson)) personSelect.value = currentPerson;
+  if ([...categorySelect.options].some((option) => option.value === currentCategory)) categorySelect.value = currentCategory;
+  if ([...statsPersonSelect.options].some((option) => option.value === currentStatsPerson)) statsPersonSelect.value = currentStatsPerson;
+  if ([...statsCategorySelect.options].some((option) => option.value === currentStatsCategory)) statsCategorySelect.value = currentStatsCategory;
+
+  renderCurrentStatus();
+  renderTodayRecords();
+  renderStats();
 }
 
 startBtn.addEventListener('click', () => {
@@ -310,6 +564,7 @@ startBtn.addEventListener('click', () => {
   }
 
   const newActive = {
+    id: uid(),
     person: personSelect.value,
     category: categorySelect.value,
     startTime: new Date().toISOString()
@@ -327,21 +582,16 @@ endBtn.addEventListener('click', () => {
   }
 
   const endTime = new Date();
-  const startTime = new Date(active.startTime);
-  const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
-
   const records = getRecords();
   records.push({
     ...active,
     endTime: endTime.toISOString(),
-    durationMinutes
+    durationMinutes: recalcDuration(active.startTime, endTime.toISOString())
   });
 
   saveRecords(records);
   saveActiveRecord(null);
-  renderCurrentStatus();
-  renderTodayRecords();
-  renderStats();
+  refreshAll();
 });
 
 clearDataBtn.addEventListener('click', () => {
@@ -349,16 +599,19 @@ clearDataBtn.addEventListener('click', () => {
   if (!ok) return;
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(ACTIVE_KEY);
-  renderCurrentStatus();
-  renderTodayRecords();
-  renderStats();
+  refreshAll();
 });
 
+exportCsvBtn.addEventListener('click', exportCsv);
+exportExcelBtn.addEventListener('click', exportExcel);
+addPersonBtn.addEventListener('click', addPerson);
+addCategoryBtn.addEventListener('click', addCategory);
 rangeSelect.addEventListener('change', renderStats);
 statsPersonSelect.addEventListener('change', renderStats);
+statsCategorySelect.addEventListener('change', renderStats);
+newPersonInput.addEventListener('keydown', (e) => e.key === 'Enter' && addPerson());
+newCategoryInput.addEventListener('keydown', (e) => e.key === 'Enter' && addCategory());
 
 setInterval(tickClock, 1000);
 tickClock();
-renderCurrentStatus();
-renderTodayRecords();
-renderStats();
+refreshAll();
