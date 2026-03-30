@@ -27,13 +27,13 @@ import {
   renameCategoryInState
 } from './shared.js';
 
-window.__bootStatus?.('後台模組已載入 / Admin module loaded');
+window.__bootStatus?.('後台模組已載入');
 if (window.ChartDataLabels) {
   Chart.register(window.ChartDataLabels);
-  window.__bootStatus?.('後台圖表插件已載入 / Chart plugin ready');
+  window.__bootStatus?.('後台圖表插件已載入');
 } else {
   console.warn('ChartDataLabels plugin not loaded; continuing without datalabels.');
-  window.__bootStatus?.('後台圖表插件缺失，略過 / Chart plugin missing, skipped');
+  window.__bootStatus?.('後台圖表插件缺失，已略過');
 }
 
 const syncIndicator = document.getElementById('syncIndicator');
@@ -77,7 +77,7 @@ function setSyncStatus(status, text) {
 }
 
 function setDiagnostic(text, isError = false) {
-  diagnosticBox.textContent = `診斷訊息 / Diagnostic：${text}`;
+  diagnosticBox.textContent = `診斷訊息：${text}`;
   diagnosticBox.className = isError ? 'diagnostic-box subtle-diagnostic diagnostic-box-error' : 'diagnostic-box subtle-diagnostic';
 }
 
@@ -87,9 +87,9 @@ function percentOf(value, total) {
 }
 
 function getRangeLabel(range, previous = false) {
-  if (range === 'day') return previous ? '昨天 / Previous Day' : '今天 / Current Day';
-  if (range === 'week') return previous ? '上週 / Previous Week' : '本週 / Current Week';
-  return previous ? '上月 / Previous Month' : '本月 / Current Month';
+  if (range === 'day') return previous ? '昨天' : '今天';
+  if (range === 'week') return previous ? '上週' : '本週';
+  return previous ? '上月' : '本月';
 }
 
 function isAdminUnlocked() {
@@ -105,20 +105,33 @@ function updateAuthUI() {
   adminLoginPanel.classList.toggle('hidden', !hasPassword || unlocked);
   adminAuthShell.classList.toggle('hidden', unlocked);
   adminAppShell.classList.toggle('hidden', !unlocked);
-  if (!hasPassword) adminLoginStatus.textContent = '尚未設定後台密碼。 / Admin password not set.';
-  else if (!unlocked) adminLoginStatus.textContent = '請先輸入管理密碼。 / Enter admin password first.';
+  if (!hasPassword) adminLoginStatus.textContent = '尚未設定後台密碼。';
+  else if (!unlocked) adminLoginStatus.textContent = '請先輸入管理密碼。';
 }
 
 function renderAdminSelectOptions() {
   const people = personNames(dashboardState.people);
   const categories = dashboardState.categories;
-  statsPersonSelect.innerHTML = ['<option value="all">全部人員 / All</option>'].concat(people.map((person) => `<option value="${person}">${person}</option>`)).join('');
-  statsCategorySelect.innerHTML = ['<option value="all">全部項目 / All</option>'].concat(categories.map((category) => `<option value="${category}">${displayCategory(category)}</option>`)).join('');
+  statsPersonSelect.innerHTML = ['<option value="all">全部人員</option>'].concat(people.map((person) => `<option value="${person}">${person}</option>`)).join('');
+  statsCategorySelect.innerHTML = ['<option value="all">全部項目</option>'].concat(categories.map((category) => `<option value="${category}">${displayCategory(category)}</option>`)).join('');
 }
 
 function renderTags() {
-  peopleTags.innerHTML = normalizePeople(dashboardState.people).map((person) => `<span class="tag">${person.name}<button type="button" onclick="window.resetPersonPassword('${person.name.replace(/'/g, "\\'")}')">設密碼 / Password</button><button type="button" onclick="window.removePerson('${person.name.replace(/'/g, "\\'")}')">刪除 / Delete</button></span>`).join('');
-  categoryTags.innerHTML = dashboardState.categories.map((category) => `<span class="tag">${displayCategory(category)}<button type="button" onclick="window.editCategory('${category.replace(/'/g, "\\'")}')">編輯 / Edit</button><button type="button" onclick="window.removeCategory('${category.replace(/'/g, "\\'")}')">刪除 / Delete</button></span>`).join('');
+  peopleTags.innerHTML = normalizePeople(dashboardState.people).map((person) => `
+    <span class="tag">
+      <span class="tag-name">${person.name}</span>
+      <button type="button" onclick="window.resetPersonPassword('${person.name.replace(/'/g, "\\'")}')">設密碼</button>
+      <button type="button" onclick="window.removePerson('${person.name.replace(/'/g, "\\'")}')">刪除</button>
+    </span>
+  `).join('');
+
+  categoryTags.innerHTML = dashboardState.categories.map((category) => `
+    <span class="tag">
+      <span class="tag-name">${displayCategory(category)}</span>
+      <button type="button" onclick="window.editCategory('${category.replace(/'/g, "\\'")}')">編輯</button>
+      <button type="button" onclick="window.removeCategory('${category.replace(/'/g, "\\'")}')">刪除</button>
+    </span>
+  `).join('');
 }
 
 function collectStats() {
@@ -160,17 +173,17 @@ function renderSummary(currentRecords, previousRecords, compareMode, range) {
 
   summaryCards.innerHTML = [
     {
-      label: '總統計時間 / Total Time',
+      label: '總統計時間',
       value: formatDuration(totalMinutes),
-      sub: compareMode === 'previous' ? `相較${getRangeLabel(range, true)}：${formatDelta(totalMinutes - previousTotalMinutes)}` : `${currentRecords.length} 筆紀錄 / records`
+      sub: compareMode === 'previous' ? `相較${getRangeLabel(range, true)}：${formatDelta(totalMinutes - previousTotalMinutes)}` : `${currentRecords.length} 筆紀錄`
     },
     {
-      label: '念書時間 / Study Time',
+      label: '念書時間',
       value: formatDuration(studyMinutes),
       sub: compareMode === 'previous' ? `相較${getRangeLabel(range, true)}：${formatDelta(studyMinutes - previousStudyMinutes)}` : percentOf(studyMinutes, totalMinutes)
     },
     {
-      label: '休閒＋遊戲 / Leisure + Gaming',
+      label: '休閒＋遊戲',
       value: formatDuration(leisureMinutes + gameMinutes),
       sub: compareMode === 'previous'
         ? `相較${getRangeLabel(range, true)}：${formatDelta(leisureMinutes + gameMinutes - previousLeisureMinutes - previousGameMinutes)}`
@@ -280,7 +293,7 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
         y: {
           beginAtZero: true,
           grace: '12%',
-          title: { display: true, text: '分鐘 / Minutes' },
+          title: { display: true, text: '分鐘' },
           grid: {
             drawBorder: false
           }
@@ -320,7 +333,7 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
 function renderRecordsTable(records) {
   const sorted = [...records].sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
   if (!sorted.length) {
-    recordsTableBody.innerHTML = '<tr><td colspan="6">目前這個區間沒有資料。 / No data in this range.</td></tr>';
+    recordsTableBody.innerHTML = '<tr><td colspan="6">目前這個區間沒有資料。</td></tr>';
     return;
   }
   recordsTableBody.innerHTML = sorted.map((record) => `
@@ -330,7 +343,7 @@ function renderRecordsTable(records) {
       <td>${formatDateTime(record.startTime)}</td>
       <td>${formatDateTime(record.endTime)}</td>
       <td>${record.durationMinutes}</td>
-      <td><div class="action-cell"><button class="small-btn edit-btn" onclick="window.editRecord('${record.id}')">編輯 / Edit</button><button class="small-btn delete-btn" onclick="window.deleteRecord('${record.id}')">刪除 / Delete</button></div></td>
+      <td><div class="action-cell"><button class="small-btn edit-btn" onclick="window.editRecord('${record.id}')">編輯</button><button class="small-btn delete-btn" onclick="window.deleteRecord('${record.id}')">刪除</button></div></td>
     </tr>
   `).join('');
 }
@@ -353,32 +366,32 @@ function refreshAdmin() {
 }
 
 async function addPerson() {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   const value = newPersonInput.value.trim();
   if (!value) return;
   const people = normalizePeople(dashboardState.people);
-  if (people.some((item) => item.name === value)) return alert('這個人員已存在。 / Person exists.');
-  const password = prompt(`請為 ${value} 設定初始密碼 / Set initial password`);
-  if (!password || password.length < 4) return alert('密碼至少 4 碼。 / At least 4 characters.');
+  if (people.some((item) => item.name === value)) return alert('這個人員已存在。');
+  const password = prompt(`請為 ${value} 設定初始密碼`);
+  if (!password || password.length < 4) return alert('密碼至少 4 碼。');
   await saveDashboardState({ people: people.concat({ name: value, password, createdAt: new Date().toISOString() }) });
   newPersonInput.value = '';
 }
 
 async function addCategory() {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   const value = newCategoryInput.value.trim();
   if (!value) return;
-  if (dashboardState.categories.includes(value)) return alert('這個項目已存在。 / Category exists.');
+  if (dashboardState.categories.includes(value)) return alert('這個項目已存在。');
   await saveDashboardState({ categories: dashboardState.categories.concat(value) });
   newCategoryInput.value = '';
 }
 
 async function setupAdminPassword() {
   const password = setupAdminPasswordInput.value.trim();
-  if (password.length < ADMIN_PASSWORD_MIN_LENGTH) return alert(`管理密碼至少 ${ADMIN_PASSWORD_MIN_LENGTH} 碼。 / At least ${ADMIN_PASSWORD_MIN_LENGTH} chars.`);
+  if (password.length < ADMIN_PASSWORD_MIN_LENGTH) return alert(`管理密碼至少 ${ADMIN_PASSWORD_MIN_LENGTH} 碼。`);
   await saveDashboardState({ settings: { ...normalizeSettings(dashboardState.settings), adminPassword: password, adminUpdatedAt: new Date().toISOString() } });
   setupAdminPasswordInput.value = '';
-  alert('管理密碼已建立，請直接登入後台。 / Admin password saved.');
+  alert('管理密碼已建立，請直接登入後台。');
 }
 
 function loginAdmin() {
@@ -389,7 +402,7 @@ function loginAdmin() {
   }
   saveAdminSession();
   adminPasswordInput.value = '';
-  adminLoginStatus.textContent = '登入成功。 / Login successful.';
+  adminLoginStatus.textContent = '登入成功。';
   updateAuthUI();
   refreshAdmin();
 }
@@ -400,32 +413,32 @@ function logoutAdmin() {
 }
 
 window.resetPersonPassword = async function resetPersonPassword(name) {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
-  const nextPassword = prompt(`請輸入 ${name} 的新密碼 / New password`);
-  if (!nextPassword || nextPassword.length < 4) return alert('密碼至少 4 碼。 / At least 4 characters.');
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
+  const nextPassword = prompt(`請輸入 ${name} 的新密碼`);
+  if (!nextPassword || nextPassword.length < 4) return alert('密碼至少 4 碼。');
   await saveDashboardState({ people: updatePersonPassword(dashboardState.people, name, nextPassword) });
 };
 
 window.editCategory = async function editCategory(category) {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
-  const nextName = prompt(`請輸入新的項目名稱 / Enter new category name`, category);
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
+  const nextName = prompt('請輸入新的項目名稱', category);
   if (!nextName || nextName.trim() === category) return;
   const trimmed = nextName.trim();
-  if (dashboardState.categories.includes(trimmed)) return alert('這個項目名稱已存在。 / Category already exists.');
+  if (dashboardState.categories.includes(trimmed)) return alert('這個項目名稱已存在。');
   const renamed = renameCategoryInState(dashboardState, category, trimmed);
   await saveDashboardState(renamed);
 };
 
 window.removePerson = async function removePerson(person) {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   const people = normalizePeople(dashboardState.people);
-  if (people.length <= 1) return alert('至少要保留一位人員。 / Keep at least one person.');
+  if (people.length <= 1) return alert('至少要保留一位人員。');
 
   const hasRecords = dashboardState.records.some((record) => record.person === person);
   const hasActive = Boolean(dashboardState.activeRecords?.[person]);
   const confirmMessage = hasRecords || hasActive
-    ? `確定要刪除 ${person} 嗎？這會連同此人所有歷史紀錄與進行中紀錄一併刪除，且無法復原。 / Delete ${person} and all related records?`
-    : `確定要刪除 ${person} 嗎？ / Delete ${person}?`;
+    ? `確定要刪除 ${person} 嗎？這會連同此人所有歷史紀錄與進行中紀錄一併刪除，且無法復原。`
+    : `確定要刪除 ${person} 嗎？`;
 
   if (!confirm(confirmMessage)) return;
 
@@ -440,64 +453,64 @@ window.removePerson = async function removePerson(person) {
 };
 
 window.removeCategory = async function removeCategory(category) {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
-  if (dashboardState.categories.length <= 1) return alert('至少要保留一個項目。 / Keep at least one category.');
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
+  if (dashboardState.categories.length <= 1) return alert('至少要保留一個項目。');
   const used = dashboardState.records.some((record) => record.category === category) || Object.values(dashboardState.activeRecords || {}).some((item) => item.category === category);
-  if (used) return alert('這個項目已有使用紀錄，不能刪除。 / Category has data.');
+  if (used) return alert('這個項目已有使用紀錄，不能刪除。');
   await saveDashboardState({ categories: dashboardState.categories.filter((item) => item !== category) });
 };
 
 window.deleteRecord = async function deleteRecord(id) {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
-  if (!confirm('確定要刪除這筆紀錄嗎？ / Delete this record?')) return;
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
+  if (!confirm('確定要刪除這筆紀錄嗎？')) return;
   await saveDashboardState({ records: dashboardState.records.filter((record) => record.id !== id) });
 };
 
 window.editRecord = async function editRecord(id) {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
   const record = dashboardState.records.find((item) => item.id === id);
   if (!record) return;
-  const person = prompt(`請輸入人員名稱 / Person (${personNames(dashboardState.people).join(' / ')})`, record.person);
+  const person = prompt(`請輸入人員名稱（可用：${personNames(dashboardState.people).join(' / ')}）`, record.person);
   if (!person) return;
-  const category = prompt(`請輸入項目名稱 / Category (${dashboardState.categories.map(displayCategory).join(' / ')})`, record.category);
+  const category = prompt(`請輸入項目名稱（可用：${dashboardState.categories.map(displayCategory).join(' / ')}）`, record.category);
   if (!category) return;
-  const start = prompt('請輸入開始時間 / Start (YYYY-MM-DDTHH:mm)', toDatetimeLocalValue(record.startTime));
+  const start = prompt('請輸入開始時間（YYYY-MM-DDTHH:mm）', toDatetimeLocalValue(record.startTime));
   if (!start) return;
-  const end = prompt('請輸入結束時間 / End (YYYY-MM-DDTHH:mm)', toDatetimeLocalValue(record.endTime));
+  const end = prompt('請輸入結束時間（YYYY-MM-DDTHH:mm）', toDatetimeLocalValue(record.endTime));
   if (!end) return;
   const startDate = new Date(start);
   const endDate = new Date(end);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) return alert('時間格式不正確，或結束時間必須晚於開始時間。 / Invalid time.');
-  if (!personNames(dashboardState.people).includes(person)) return alert('人員不存在。 / Person not found.');
-  if (!dashboardState.categories.includes(category)) return alert('項目不存在。 / Category not found.');
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) return alert('時間格式不正確，或結束時間必須晚於開始時間。');
+  if (!personNames(dashboardState.people).includes(person)) return alert('人員不存在。');
+  if (!dashboardState.categories.includes(category)) return alert('項目不存在。');
   await saveDashboardState({ records: dashboardState.records.map((item) => item.id === id ? { ...item, person, category, startTime: startDate.toISOString(), endTime: endDate.toISOString(), durationMinutes: recalcDuration(startDate.toISOString(), endDate.toISOString()) } : item) });
 };
 
 function exportCsv() {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
-  if (!dashboardState.records.length) return alert('目前沒有資料可以匯出。 / No data.');
-  const rows = [['人員 / Person', '項目 / Category', '開始時間 / Start', '結束時間 / End', '分鐘數 / Minutes']].concat(dashboardState.records.map((record) => [record.person, displayCategory(record.category), record.startTime, record.endTime, record.durationMinutes]));
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
+  if (!dashboardState.records.length) return alert('目前沒有資料可以匯出。');
+  const rows = [['人員', '項目', '開始時間', '結束時間', '分鐘數']].concat(dashboardState.records.map((record) => [record.person, displayCategory(record.category), record.startTime, record.endTime, record.durationMinutes]));
   const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
   downloadBlob('study-time-records.csv', new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
 }
 
 function exportExcel() {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
-  if (!dashboardState.records.length) return alert('目前沒有資料可以匯出。 / No data.');
-  const sheet = XLSX.utils.json_to_sheet(dashboardState.records.map((record) => ({ '人員 / Person': record.person, '項目 / Category': displayCategory(record.category), '開始時間 / Start': record.startTime, '結束時間 / End': record.endTime, '分鐘數 / Minutes': record.durationMinutes })));
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
+  if (!dashboardState.records.length) return alert('目前沒有資料可以匯出。');
+  const sheet = XLSX.utils.json_to_sheet(dashboardState.records.map((record) => ({ 人員: record.person, 項目: displayCategory(record.category), 開始時間: record.startTime, 結束時間: record.endTime, 分鐘數: record.durationMinutes })));
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, 'Records');
   XLSX.writeFile(workbook, 'study-time-records.xlsx');
 }
 
 async function clearAllData() {
-  if (!isAdminUnlocked()) return alert('請先登入後台。 / Login first.');
-  if (!confirm('確定要清除所有紀錄與進行中資料嗎？ / Clear all data?')) return;
+  if (!isAdminUnlocked()) return alert('請先登入後台。');
+  if (!confirm('確定要清除所有紀錄與進行中資料嗎？')) return;
   await saveDashboardState({ records: [], activeRecords: {} });
 }
 
 async function init() {
-  setSyncStatus('loading', '初始化中 / Initializing');
+  setSyncStatus('loading', '初始化中');
   adminLoginBtn.addEventListener('click', loginAdmin);
   setupAdminPasswordBtn.addEventListener('click', setupAdminPassword);
   adminLogoutBtn.addEventListener('click', logoutAdmin);
@@ -513,21 +526,21 @@ async function init() {
   try {
     setDiagnostic('開始初始化 Firebase / Firestore...');
     await ensureRemoteState();
-    setDiagnostic('已通過 ensureRemoteState，開始訂閱雲端資料 / Subscribing...');
+    setDiagnostic('已通過 ensureRemoteState，開始訂閱雲端資料...');
     subscribeDashboard((state) => {
       dashboardState = state;
-      setSyncStatus('online', '已連線 / Connected');
-      setDiagnostic('後台已收到 Firestore 資料。 / Admin synced.');
+      setSyncStatus('online', '已連線');
+      setDiagnostic('後台已收到 Firestore 資料。');
       updateAuthUI();
       if (isAdminUnlocked()) refreshAdmin();
     }, (error) => {
       console.error(error);
-      setSyncStatus('error', '連線失敗 / Error');
+      setSyncStatus('error', '連線失敗');
       setDiagnostic(`${error.name || 'Error'}: ${error.message || error.code || '未知錯誤'}`, true);
     });
   } catch (error) {
     console.error(error);
-    setSyncStatus('error', '初始化失敗 / Init Failed');
+    setSyncStatus('error', '初始化失敗');
     setDiagnostic(`${error.name || 'Error'}: ${error.message || '初始化失敗'}`, true);
   }
 }
