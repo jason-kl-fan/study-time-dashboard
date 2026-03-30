@@ -154,19 +154,17 @@ function renderCharts(records) {
         datalabels: {
           display: false,
           color: '#4b415f',
-          anchor: 'end',
-          align: 'end',
-          font: { weight: '700' },
           formatter: (value) => (value ? formatDuration(value) : '')
         }
       }))
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
+      maintainAspectRatio: true,
+      aspectRatio: 2.1,
       layout: {
         padding: {
-          top: 18,
+          top: 12,
           right: 10,
           left: 8,
           bottom: 8
@@ -206,7 +204,7 @@ function renderCharts(records) {
         },
         y: {
           beginAtZero: true,
-          grace: '22%',
+          grace: '12%',
           title: { display: true, text: '分鐘 / Minutes' },
           grid: {
             drawBorder: false
