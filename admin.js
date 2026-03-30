@@ -344,7 +344,7 @@ function exportCsv() {
   const rows = [['人員', '項目', '開始時間', '結束時間', '分鐘數']].concat(
     dashboardState.records.map((record) => [record.person, record.category, record.startTime, record.endTime, record.durationMinutes])
   );
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
   downloadBlob('study-time-records.csv', new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
 }
 
