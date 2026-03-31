@@ -304,6 +304,7 @@ select {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  display: block;
   box-sizing: border-box;
   padding: 14px 16px;
   border: 1px solid rgba(163, 150, 194, 0.28);
@@ -340,10 +341,18 @@ label span {
   display: grid;
   gap: 14px;
   margin-top: 18px;
+  width: 100%;
+  min-width: 0;
 }
 
 .filter-bar label {
   min-width: 0;
+  width: 100%;
+}
+
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .two-col-tight {
@@ -871,6 +880,12 @@ th {
   .two-col,
   .two-col-tight {
     grid-template-columns: 1fr;
+  }
+
+  input[type="date"] {
+    width: calc(100vw - 48px);
+    max-width: 100%;
+    font-size: 16px;
   }
 
   .summary-card {
