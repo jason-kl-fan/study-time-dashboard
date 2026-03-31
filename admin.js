@@ -62,6 +62,9 @@ const rangeInfoCard = document.getElementById('rangeInfoCard');
 const summaryCards = document.getElementById('summaryCards');
 const recordsTableBody = document.getElementById('recordsTableBody');
 const recordsCardList = document.getElementById('recordsCardList');
+const adminPieNote = document.getElementById('adminPieNote');
+const adminPieBreakdown = document.getElementById('adminPieBreakdown');
+const personCategoryBox = document.getElementById('personCategoryBox');
 const newPersonInput = document.getElementById('newPersonInput');
 const newCategoryInput = document.getElementById('newCategoryInput');
 const addPersonBtn = document.getElementById('addPersonBtn');
@@ -357,6 +360,81 @@ function createChartOptionsForMobile() {
   };
 }
 
+function renderAdminPieBreakdown(categories, totals) {
+  if (!adminPieNote || !adminPieBreakdown) return;
+
+  const totalMinutes = totals.reduce((sum, value) => sum + value, 0);
+  const topIndex = totals.indexOf(Math.max(...totals));
+
+  if (!totalMinutes) {
+    adminPieNote.textContent = '目前這個統計區間還沒有資料。';
+    adminPieBreakdown.className = 'chart-stats-list empty-state';
+    adminPieBreakdown.textContent = '尚無可顯示數據。';
+    return;
+  }
+
+  adminPieNote.textContent = `總計 ${formatDuration(totalMinutes)}，主要分配：${displayCategory(categories[topIndex] || '尚無資料')}`;
+  adminPieBreakdown.className = 'chart-stats-list';
+  adminPieBreakdown.innerHTML = categories
+    .map((category, index) => `
+      <div class="chart-stat-item stat-pill-row">
+        <div class="stat-pill-left">
+          <span class="color-dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
+          <span>${displayCategory(category)}</span>
+        </div>
+        <div class="stat-pill-right">
+          <strong>${formatDuration(totals[index])}</strong>
+          <span>${percentOf(totals[index], totalMinutes)}</span>
+        </div>
+      </div>
+    `)
+    .join('');
+}
+
+function getPersonCategoryTotals(records, people, categories) {
+  return people.map((person) => {
+    const personRecords = records.filter((record) => record.person === person);
+    const totals = aggregateByCategory(personRecords, categories);
+    return {
+      person,
+      records: personRecords,
+      totals,
+      totalMinutes: personRecords.reduce((sum, record) => sum + record.durationMinutes, 0)
+    };
+  });
+}
+
+function renderPersonCategoryBreakdown(currentRecords) {
+  if (!personCategoryBox) return;
+  const categories = dashboardState.categories;
+  const people = personNames(dashboardState.people);
+  const rows = getPersonCategoryTotals(currentRecords, people, categories);
+
+  if (!rows.some((row) => row.totalMinutes > 0)) {
+    personCategoryBox.className = 'chart-stats-list empty-state';
+    personCategoryBox.textContent = '目前這個統計區間還沒有可顯示的人員分類資料。';
+    return;
+  }
+
+  personCategoryBox.className = 'chart-stats-list';
+  personCategoryBox.innerHTML = rows.map((row) => `
+    <div class="record-detail-card" style="margin-bottom:12px;">
+      <div class="record-detail-head">
+        <strong>${row.person}</strong>
+        <span class="record-detail-minutes">總計 ${formatDuration(row.totalMinutes)}</span>
+      </div>
+      <div class="record-detail-grid">
+        ${dashboardState.categories.map((category, index) => `
+          <div>
+            <span class="record-detail-label">${displayCategory(category)}</span>
+            <span>${formatDuration(row.totals[index])}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
 function renderCharts(currentRecords, previousRecords, compareMode, range) {
   const people = personNames(dashboardState.people);
   const categories = dashboardState.categories;
@@ -366,47 +444,66 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
   const categoryTotals = aggregateByCategory(chartCurrentRecords, categories);
   const previousCategoryTotals = aggregateByCategory(chartPreviousRecords, categories);
   const mobileOptions = createChartOptionsForMobile();
+  const personCategoryTotals = getPersonCategoryTotals(currentRecords, people, categories);
+
+  renderAdminPieBreakdown(categories, categoryTotals);
+  renderPersonCategoryBreakdown(currentRecords);
 
   if (barChart) barChart.destroy();
   if (pieChart) pieChart.destroy();
 
+  const isAllPeopleMode = compareMode !== 'previous' && selectedPerson === 'all';
+  const barLabels = isAllPeopleMode ? people : categories.map(displayCategory);
+  const barDatasets = compareMode === 'previous'
+    ? [
+        {
+          label: getRangeLabel(range, false),
+          data: categoryTotals,
+          backgroundColor: CHART_PALETTE[0],
+          borderRadius: 10,
+          maxBarThickness: mobileOptions.mobile ? 22 : 34,
+          categoryPercentage: 0.66,
+          barPercentage: 0.76,
+          datalabels: { display: false }
+        },
+        {
+          label: getRangeLabel(range, true),
+          data: previousCategoryTotals,
+          backgroundColor: 'rgba(138, 168, 255, 0.72)',
+          borderRadius: 10,
+          maxBarThickness: mobileOptions.mobile ? 22 : 34,
+          categoryPercentage: 0.66,
+          barPercentage: 0.76,
+          datalabels: { display: false }
+        }
+      ]
+    : isAllPeopleMode
+      ? categories.map((category, index) => ({
+          label: displayCategory(category),
+          data: personCategoryTotals.map((row) => row.totals[index]),
+          backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
+          borderRadius: 10,
+          maxBarThickness: mobileOptions.mobile ? 26 : 34,
+          categoryPercentage: mobileOptions.mobile ? 0.78 : 0.66,
+          barPercentage: mobileOptions.mobile ? 0.88 : 0.76,
+          datalabels: { display: false }
+        }))
+      : [{
+          label: selectedPerson,
+          data: categoryTotals,
+          backgroundColor: CHART_PALETTE[0],
+          borderRadius: 10,
+          maxBarThickness: mobileOptions.mobile ? 22 : 34,
+          categoryPercentage: 0.66,
+          barPercentage: 0.76,
+          datalabels: { display: false }
+        }];
+
   barChart = new Chart(document.getElementById('barChart'), {
     type: 'bar',
     data: {
-      labels: categories.map(displayCategory),
-      datasets: compareMode === 'previous'
-        ? [
-            {
-              label: getRangeLabel(range, false),
-              data: categoryTotals,
-              backgroundColor: CHART_PALETTE[0],
-              borderRadius: 10,
-              maxBarThickness: mobileOptions.mobile ? 22 : 34,
-              categoryPercentage: 0.66,
-              barPercentage: 0.76,
-              datalabels: { display: false }
-            },
-            {
-              label: getRangeLabel(range, true),
-              data: previousCategoryTotals,
-              backgroundColor: 'rgba(138, 168, 255, 0.72)',
-              borderRadius: 10,
-              maxBarThickness: mobileOptions.mobile ? 22 : 34,
-              categoryPercentage: 0.66,
-              barPercentage: 0.76,
-              datalabels: { display: false }
-            }
-          ]
-        : people.map((person, index) => ({
-            label: person,
-            data: aggregateByCategory(currentRecords.filter((record) => record.person === person), categories),
-            backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length],
-            borderRadius: 10,
-            maxBarThickness: mobileOptions.mobile ? 22 : 34,
-            categoryPercentage: 0.66,
-            barPercentage: 0.76,
-            datalabels: { display: false }
-          }))
+      labels: barLabels,
+      datasets: barDatasets
     },
     options: {
       responsive: true,
@@ -441,6 +538,7 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
       scales: {
         x: {
           beginAtZero: true,
+          stacked: isAllPeopleMode && mobileOptions.mobile,
           grace: '12%',
           title: { display: !mobileOptions.mobile, text: '分鐘' },
           ticks: {
@@ -454,6 +552,7 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
           }
         },
         y: {
+          stacked: isAllPeopleMode && mobileOptions.mobile,
           offset: !mobileOptions.mobile,
           ticks: {
             autoSkip: false,
