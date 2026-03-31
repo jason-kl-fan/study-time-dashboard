@@ -57,6 +57,8 @@ const compareModeSelect = document.getElementById('compareModeSelect');
 const customRangeBar = document.getElementById('customRangeBar');
 const customStartDateInput = document.getElementById('customStartDateInput');
 const customEndDateInput = document.getElementById('customEndDateInput');
+const quickRangeWrap = document.getElementById('quickRangeWrap');
+const rangeInfoCard = document.getElementById('rangeInfoCard');
 const summaryCards = document.getElementById('summaryCards');
 const recordsTableBody = document.getElementById('recordsTableBody');
 const recordsCardList = document.getElementById('recordsCardList');
@@ -126,6 +128,77 @@ function getPreviousCustomRangeBounds(bounds) {
 function updateCustomRangeUI() {
   const isCustom = rangeSelect.value === 'custom';
   customRangeBar?.classList.toggle('hidden', !isCustom);
+  quickRangeWrap?.classList.toggle('hidden', !isCustom);
+}
+
+function formatDateOnly(date) {
+  return new Intl.DateTimeFormat('zh-Hant-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
+function formatDateForInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function applyQuickRange(shortcut) {
+  const today = new Date();
+  const start = new Date(today);
+  const end = new Date(today);
+
+  if (shortcut === 'today') {
+    // keep as today
+  } else if (shortcut === 'yesterday') {
+    start.setDate(start.getDate() - 1);
+    end.setDate(end.getDate() - 1);
+  } else if (shortcut === 'last7') {
+    start.setDate(start.getDate() - 6);
+  } else if (shortcut === 'last30') {
+    start.setDate(start.getDate() - 29);
+  } else if (shortcut === 'thisMonth') {
+    start.setDate(1);
+  } else if (shortcut === 'lastMonth') {
+    start.setMonth(start.getMonth() - 1, 1);
+    end.setDate(0);
+  }
+
+  customStartDateInput.value = formatDateForInput(start);
+  customEndDateInput.value = formatDateForInput(end);
+  refreshAdmin();
+}
+
+function renderRangeInfo(range, compareMode) {
+  if (!rangeInfoCard) return;
+  let currentText = getRangeLabel(range, false);
+  let previousText = getRangeLabel(range, true);
+
+  if (range === 'custom') {
+    const currentBounds = getCustomRangeBounds();
+    const previousBounds = getPreviousCustomRangeBounds(currentBounds);
+    if (!currentBounds) {
+      rangeInfoCard.classList.add('hidden');
+      return;
+    }
+    currentText = `${formatDateOnly(currentBounds.start)} ～ ${formatDateOnly(currentBounds.end)}`;
+    previousText = previousBounds
+      ? `${formatDateOnly(previousBounds.start)} ～ ${formatDateOnly(previousBounds.end)}`
+      : '—';
+  }
+
+  rangeInfoCard.innerHTML = compareMode === 'previous'
+    ? `<strong>目前區間：</strong>${currentText}<br /><strong>比較區間：</strong>${previousText}`
+    : `<strong>目前區間：</strong>${currentText}`;
+  rangeInfoCard.classList.remove('hidden');
+}
+
+function getTopCategories(records, limit = 3) {
+  return Object.entries(records.reduce((acc, record) => {
+    acc[record.category] = (acc[record.category] || 0) + record.durationMinutes;
+    return acc;
+  }, {}))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit);
 }
 
 function isAdminUnlocked() {
@@ -233,6 +306,7 @@ function renderSummary(currentRecords, previousRecords, compareMode, range) {
   const previousStudyMinutes = getMinutesByCategory(previousRecords, isStudyCategory);
   const leisureGameMinutes = getMinutesByCategory(currentRecords, isLeisureOrGameCategory);
   const previousLeisureGameMinutes = getMinutesByCategory(previousRecords, isLeisureOrGameCategory);
+  const topCategories = getTopCategories(currentRecords);
 
   console.debug('admin-summary-category-check', {
     currentCategories: currentRecords.map((item) => item.category),
@@ -258,6 +332,13 @@ function renderSummary(currentRecords, previousRecords, compareMode, range) {
       sub: compareMode === 'previous'
         ? `相較${getRangeLabel(range, true)}：${formatDelta(leisureGameMinutes - previousLeisureGameMinutes)}`
         : percentOf(leisureGameMinutes, totalMinutes)
+    },
+    {
+      label: topCategories[0] ? `熱門分類：${displayCategory(topCategories[0][0])}` : '熱門分類',
+      value: topCategories[0] ? formatDuration(topCategories[0][1]) : '尚無資料',
+      sub: topCategories.length > 1
+        ? `接著是 ${topCategories.slice(1).map(([category, minutes]) => `${displayCategory(category)} ${formatDuration(minutes)}`).join('、')}`
+        : '目前區間尚無其他分類'
     }
   ].map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div><div class="summary-sub">${card.sub}</div></div>`).join('');
 }
@@ -467,11 +548,13 @@ function renderAdminStats() {
   updateCustomRangeUI();
   const { currentRecords, previousRecords, compareMode, range, hasValidCustomRange } = collectStats();
   if (range === 'custom' && !hasValidCustomRange) {
+    rangeInfoCard?.classList.add('hidden');
     summaryCards.innerHTML = '<div class="summary-card"><div class="label">自訂區間</div><div class="value">請選日期</div><div class="summary-sub">開始日期不能晚於結束日期</div></div>';
     renderCharts([], [], 'off', range);
     renderRecordsTable([]);
     return;
   }
+  renderRangeInfo(range, compareMode);
   renderSummary(currentRecords, previousRecords, compareMode, range);
   renderCharts(currentRecords, previousRecords, compareMode, range);
   renderRecordsTable(currentRecords);
@@ -648,6 +731,13 @@ async function init() {
   rangeSelect.addEventListener('change', refreshAdmin);
   customStartDateInput?.addEventListener('change', refreshAdmin);
   customEndDateInput?.addEventListener('change', refreshAdmin);
+  document.querySelectorAll('[data-range-shortcut]').forEach((button) => {
+    button.addEventListener('click', () => {
+      rangeSelect.value = 'custom';
+      updateCustomRangeUI();
+      applyQuickRange(button.dataset.rangeShortcut);
+    });
+  });
   statsPersonSelect.addEventListener('change', refreshAdmin);
   statsCategorySelect.addEventListener('change', refreshAdmin);
   compareModeSelect.addEventListener('change', refreshAdmin);

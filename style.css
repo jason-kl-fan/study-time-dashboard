@@ -710,6 +710,14 @@ th {
   flex-wrap: wrap;
 }
 
+.quick-range-wrap {
+  margin-top: 12px;
+}
+
+.quick-range-btn {
+  padding: 10px 14px;
+}
+
 .hidden {
   display: none !important;
 }
