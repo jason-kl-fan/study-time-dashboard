@@ -206,7 +206,7 @@ function createChartOptionsForMobile() {
     barMaxHeight: mobile ? 360 : 420,
     legendPosition: mobile ? 'bottom' : 'top',
     legendFontSize: mobile ? 10 : 11,
-    pieLabelDisplay: !mobile,
+    pieLabelDisplay: true,
     pieCutout: mobile ? '58%' : '52%'
   };
 }
@@ -347,11 +347,12 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
         datalabels: {
           display: mobileOptions.pieLabelDisplay,
           color: '#3d3552',
-          font: { weight: '700', size: 12 },
+          font: { weight: '700', size: mobileOptions.mobile ? 11 : 12 },
           formatter: (value, context) => {
             const total = context.dataset.data.reduce((sum, item) => sum + item, 0);
             if (!value || !total) return '';
-            return `${Math.round((value / total) * 100)}%\n${formatDuration(value)}`;
+            const percentage = Math.round((value / total) * 100);
+            return mobileOptions.mobile ? `${percentage}%` : `${percentage}%\n${formatDuration(value)}`;
           }
         }
       }

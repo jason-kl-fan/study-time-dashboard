@@ -44,7 +44,7 @@ export function normalizeSettings(rawSettings = {}) {
   return {
     adminPassword: rawSettings?.adminPassword || '',
     adminUpdatedAt: rawSettings?.adminUpdatedAt || null,
-    lastSecurityNote: rawSettings?.lastSecurityNote || '請記得在 Firestore 規則與 Firebase Auth 再做進一步保護。 / Please add stronger Firebase Auth and Firestore Rules later.'
+    lastSecurityNote: rawSettings?.lastSecurityNote || '請記得在 Firestore 規則與 Firebase Auth 再做進一步保護。'
   };
 }
 
@@ -71,9 +71,9 @@ export function formatDateTime(dateString) {
 export function formatDuration(minutes) {
   const hrs = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (hrs === 0) return `${mins} 分鐘 / min`;
-  if (mins === 0) return `${hrs} 小時 / hr`;
-  return `${hrs} 小時 ${mins} 分鐘 / ${hrs}h ${mins}m`;
+  if (hrs === 0) return `${mins} 分鐘`;
+  if (mins === 0) return `${hrs} 小時`;
+  return `${hrs} 小時 ${mins} 分鐘`;
 }
 
 export function formatDelta(value) {
@@ -155,9 +155,9 @@ export function downloadBlob(filename, blob) {
 
 export function verifyPassword(people, name, password) {
   const person = normalizePeople(people).find((item) => item.name === name);
-  if (!person) return { ok: false, reason: '找不到這位人員。 / Person not found.' };
-  if (!person.password) return { ok: false, reason: '這位人員尚未設定密碼。 / Password not set yet.' };
-  if (person.password !== password) return { ok: false, reason: '密碼錯誤。 / Wrong password.' };
+  if (!person) return { ok: false, reason: '找不到這位人員。' };
+  if (!person.password) return { ok: false, reason: '這位人員尚未設定密碼。' };
+  if (person.password !== password) return { ok: false, reason: '密碼錯誤。' };
   return { ok: true, person };
 }
 
@@ -169,8 +169,8 @@ export function updatePersonPassword(people, name, nextPassword) {
 
 export function verifyAdminPassword(settings, password) {
   const normalized = normalizeSettings(settings);
-  if (!normalized.adminPassword) return { ok: false, reason: '尚未設定後台管理密碼。 / Admin password not set.' };
-  if (normalized.adminPassword !== password) return { ok: false, reason: '管理密碼錯誤。 / Wrong admin password.' };
+  if (!normalized.adminPassword) return { ok: false, reason: '尚未設定後台管理密碼。' };
+  if (normalized.adminPassword !== password) return { ok: false, reason: '管理密碼錯誤。' };
   return { ok: true };
 }
 
