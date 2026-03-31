@@ -302,6 +302,9 @@ button {
 input,
 select {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 14px 16px;
   border: 1px solid rgba(163, 150, 194, 0.28);
   border-radius: 16px;
@@ -339,7 +342,15 @@ label span {
   margin-top: 18px;
 }
 
+.filter-bar label {
+  min-width: 0;
+}
+
 .two-col-tight {
+  grid-template-columns: 1fr 1fr;
+}
+
+.two-col {
   grid-template-columns: 1fr 1fr;
 }
 
@@ -857,6 +868,7 @@ th {
   .summary-cards,
   .charts-grid,
   .three-col,
+  .two-col,
   .two-col-tight {
     grid-template-columns: 1fr;
   }
