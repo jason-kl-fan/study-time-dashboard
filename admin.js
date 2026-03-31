@@ -54,6 +54,9 @@ const rangeSelect = document.getElementById('rangeSelect');
 const statsPersonSelect = document.getElementById('statsPersonSelect');
 const statsCategorySelect = document.getElementById('statsCategorySelect');
 const compareModeSelect = document.getElementById('compareModeSelect');
+const customRangeBar = document.getElementById('customRangeBar');
+const customStartDateInput = document.getElementById('customStartDateInput');
+const customEndDateInput = document.getElementById('customEndDateInput');
 const summaryCards = document.getElementById('summaryCards');
 const recordsTableBody = document.getElementById('recordsTableBody');
 const recordsCardList = document.getElementById('recordsCardList');
@@ -94,7 +97,27 @@ function percentOf(value, total) {
 function getRangeLabel(range, previous = false) {
   if (range === 'day') return previous ? '昨天' : '今天';
   if (range === 'week') return previous ? '上週' : '本週';
-  return previous ? '上月' : '本月';
+  if (range === 'month') return previous ? '上月' : '本月';
+  return previous ? '上一個自訂區間' : '自訂區間';
+}
+
+function parseDateInputValue(value, endOfDay = false) {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00`);
+  if (endOfDay) date.setHours(23, 59, 59, 999);
+  return date;
+}
+
+function getCustomRangeBounds() {
+  const start = parseDateInputValue(customStartDateInput?.value);
+  const end = parseDateInputValue(customEndDateInput?.value, true);
+  if (!start || !end || start > end) return null;
+  return { start, end };
+}
+
+function updateCustomRangeUI() {
+  const isCustom = rangeSelect.value === 'custom';
+  customRangeBar?.classList.toggle('hidden', !isCustom);
 }
 
 function isAdminUnlocked() {
@@ -142,28 +165,35 @@ function renderTags() {
 function collectStats() {
   const range = rangeSelect.value;
   const compareMode = compareModeSelect.value;
-  const rangeStart = getRangeStart(range);
-  const previousRangeStart = getPreviousRangeStart(range);
   const selectedPerson = statsPersonSelect.value;
   const selectedCategory = statsCategorySelect.value;
+  const customBounds = range === 'custom' ? getCustomRangeBounds() : null;
+  const rangeStart = range === 'custom' ? customBounds?.start : getRangeStart(range);
+  const rangeEnd = range === 'custom' ? customBounds?.end : null;
+  const previousRangeStart = range === 'custom' || !rangeStart ? null : getPreviousRangeStart(range);
 
   const matchesFilters = (record) =>
     (selectedPerson === 'all' || record.person === selectedPerson) &&
     (selectedCategory === 'all' || record.category === selectedCategory);
 
-  const currentRecords = dashboardState.records.filter((record) => {
-    const start = new Date(record.startTime);
-    return start >= rangeStart && matchesFilters(record);
-  });
+  const currentRecords = !rangeStart
+    ? []
+    : dashboardState.records.filter((record) => {
+        const start = new Date(record.startTime);
+        const inRange = range === 'custom'
+          ? start >= rangeStart && start <= rangeEnd
+          : start >= rangeStart;
+        return inRange && matchesFilters(record);
+      });
 
-  const previousRecords = compareMode === 'previous'
+  const previousRecords = compareMode === 'previous' && previousRangeStart && rangeStart
     ? dashboardState.records.filter((record) => {
         const start = new Date(record.startTime);
         return start >= previousRangeStart && start < rangeStart && matchesFilters(record);
       })
     : [];
 
-  return { currentRecords, previousRecords, compareMode, range };
+  return { currentRecords, previousRecords, compareMode, range, hasValidCustomRange: range !== 'custom' || Boolean(customBounds) };
 }
 
 function renderSummary(currentRecords, previousRecords, compareMode, range) {
@@ -424,7 +454,14 @@ function renderRecordsTable(records) {
 }
 
 function renderAdminStats() {
-  const { currentRecords, previousRecords, compareMode, range } = collectStats();
+  updateCustomRangeUI();
+  const { currentRecords, previousRecords, compareMode, range, hasValidCustomRange } = collectStats();
+  if (range === 'custom' && !hasValidCustomRange) {
+    summaryCards.innerHTML = '<div class="summary-card"><div class="label">自訂區間</div><div class="value">請選日期</div><div class="summary-sub">開始日期不能晚於結束日期</div></div>';
+    renderCharts([], [], 'off', range);
+    renderRecordsTable([]);
+    return;
+  }
   renderSummary(currentRecords, previousRecords, compareMode, range);
   renderCharts(currentRecords, previousRecords, compareMode, range);
   renderRecordsTable(currentRecords);
@@ -586,6 +623,10 @@ async function clearAllData() {
 
 async function init() {
   setSyncStatus('loading', '初始化中');
+  const today = new Date().toISOString().slice(0, 10);
+  if (customStartDateInput) customStartDateInput.value = today;
+  if (customEndDateInput) customEndDateInput.value = today;
+  updateCustomRangeUI();
   adminLoginBtn.addEventListener('click', loginAdmin);
   setupAdminPasswordBtn.addEventListener('click', setupAdminPassword);
   adminLogoutBtn.addEventListener('click', logoutAdmin);
@@ -595,6 +636,8 @@ async function init() {
   exportExcelBtn.addEventListener('click', exportExcel);
   clearDataBtn.addEventListener('click', clearAllData);
   rangeSelect.addEventListener('change', refreshAdmin);
+  customStartDateInput?.addEventListener('change', refreshAdmin);
+  customEndDateInput?.addEventListener('change', refreshAdmin);
   statsPersonSelect.addEventListener('change', refreshAdmin);
   statsCategorySelect.addEventListener('change', refreshAdmin);
   compareModeSelect.addEventListener('change', refreshAdmin);

@@ -147,6 +147,7 @@
                 <option value="day">每日</option>
                 <option value="week">每週</option>
                 <option value="month">每月</option>
+                <option value="custom">自訂區間</option>
               </select>
             </label>
             <label>
@@ -156,6 +157,17 @@
             <label>
               <span>項目篩選</span>
               <select id="statsCategorySelect"></select>
+            </label>
+          </div>
+
+          <div class="filter-bar two-col mt-12 hidden" id="customRangeBar">
+            <label>
+              <span>開始日期</span>
+              <input id="customStartDateInput" type="date" />
+            </label>
+            <label>
+              <span>結束日期</span>
+              <input id="customEndDateInput" type="date" />
             </label>
           </div>
 
