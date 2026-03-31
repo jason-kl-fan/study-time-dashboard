@@ -173,20 +173,33 @@ function renderSummary(currentRecords, previousRecords, compareMode, range) {
   const getMinutesByCategory = (records, matcher) =>
     records.filter((item) => matcher(item.category)).reduce((sum, item) => sum + item.durationMinutes, 0);
 
+  const normalizeCategoryKey = (category = '') =>
+    String(category)
+      .trim()
+      .toLowerCase()
+      .replace(/[\s／/＋+&＿_-]/g, '');
+
   const isStudyCategory = (category = '') => {
-    const normalized = String(category).trim();
-    return ['念書', '唸書', '讀書', '學習', 'study', 'Study'].includes(normalized);
+    const normalized = normalizeCategoryKey(category);
+    return ['念書', '唸書', '讀書', '學習', 'study', '讀書時間', '唸書時間', '念書時間'].some((keyword) => normalized.includes(normalizeCategoryKey(keyword)));
   };
 
   const isLeisureOrGameCategory = (category = '') => {
-    const normalized = String(category).trim();
-    return ['休閒', '玩遊戲', '遊戲', '看劇', '娛樂', 'leisure', 'gaming', 'game', 'dramas', 'drama'].includes(normalized);
+    const normalized = normalizeCategoryKey(category);
+    return ['休閒', '玩遊戲', '遊戲', '看劇', '娛樂', 'leisure', 'gaming', 'game', 'dramas', 'drama'].some((keyword) => normalized.includes(normalizeCategoryKey(keyword)));
   };
 
   const studyMinutes = getMinutesByCategory(currentRecords, isStudyCategory);
   const previousStudyMinutes = getMinutesByCategory(previousRecords, isStudyCategory);
   const leisureGameMinutes = getMinutesByCategory(currentRecords, isLeisureOrGameCategory);
   const previousLeisureGameMinutes = getMinutesByCategory(previousRecords, isLeisureOrGameCategory);
+
+  console.debug('admin-summary-category-check', {
+    currentCategories: currentRecords.map((item) => item.category),
+    previousCategories: previousRecords.map((item) => item.category),
+    studyMinutes,
+    leisureGameMinutes
+  });
 
   summaryCards.innerHTML = [
     {
