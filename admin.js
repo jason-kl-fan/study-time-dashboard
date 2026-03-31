@@ -115,6 +115,14 @@ function getCustomRangeBounds() {
   return { start, end };
 }
 
+function getPreviousCustomRangeBounds(bounds) {
+  if (!bounds) return null;
+  const rangeMs = bounds.end.getTime() - bounds.start.getTime() + 1;
+  const previousEnd = new Date(bounds.start.getTime() - 1);
+  const previousStart = new Date(previousEnd.getTime() - rangeMs + 1);
+  return { start: previousStart, end: previousEnd };
+}
+
 function updateCustomRangeUI() {
   const isCustom = rangeSelect.value === 'custom';
   customRangeBar?.classList.toggle('hidden', !isCustom);
@@ -168,9 +176,11 @@ function collectStats() {
   const selectedPerson = statsPersonSelect.value;
   const selectedCategory = statsCategorySelect.value;
   const customBounds = range === 'custom' ? getCustomRangeBounds() : null;
+  const previousCustomBounds = range === 'custom' ? getPreviousCustomRangeBounds(customBounds) : null;
   const rangeStart = range === 'custom' ? customBounds?.start : getRangeStart(range);
   const rangeEnd = range === 'custom' ? customBounds?.end : null;
-  const previousRangeStart = range === 'custom' || !rangeStart ? null : getPreviousRangeStart(range);
+  const previousRangeStart = range === 'custom' ? previousCustomBounds?.start : (rangeStart ? getPreviousRangeStart(range) : null);
+  const previousRangeEnd = range === 'custom' ? previousCustomBounds?.end : rangeStart;
 
   const matchesFilters = (record) =>
     (selectedPerson === 'all' || record.person === selectedPerson) &&
@@ -186,10 +196,10 @@ function collectStats() {
         return inRange && matchesFilters(record);
       });
 
-  const previousRecords = compareMode === 'previous' && previousRangeStart && rangeStart
+  const previousRecords = compareMode === 'previous' && previousRangeStart && previousRangeEnd
     ? dashboardState.records.filter((record) => {
         const start = new Date(record.startTime);
-        return start >= previousRangeStart && start < rangeStart && matchesFilters(record);
+        return start >= previousRangeStart && start <= previousRangeEnd && matchesFilters(record);
       })
     : [];
 
