@@ -15,8 +15,18 @@ export const ADMIN_PASSWORD_MIN_LENGTH = 6;
 
 const CATEGORY_LABELS = {
   '念書': '念書',
+  '唸書': '唸書',
+  '讀書': '讀書',
+  '學習': '學習',
   '休閒': '休閒',
-  '玩遊戲': '玩遊戲'
+  '玩遊戲': '玩遊戲',
+  '遊戲': '遊戲',
+  '看劇': '看劇',
+  '娛樂': '娛樂',
+  'Study': '唸書',
+  'Leisure': '休閒',
+  'Gaming': '遊戲',
+  'Dramas': '看劇'
 };
 
 export function uid() {

@@ -169,12 +169,24 @@ function collectStats() {
 function renderSummary(currentRecords, previousRecords, compareMode, range) {
   const totalMinutes = currentRecords.reduce((sum, item) => sum + item.durationMinutes, 0);
   const previousTotalMinutes = previousRecords.reduce((sum, item) => sum + item.durationMinutes, 0);
-  const studyMinutes = currentRecords.filter((item) => item.category === '念書').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const previousStudyMinutes = previousRecords.filter((item) => item.category === '念書').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const leisureMinutes = currentRecords.filter((item) => item.category === '休閒').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const gameMinutes = currentRecords.filter((item) => item.category === '玩遊戲').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const previousLeisureMinutes = previousRecords.filter((item) => item.category === '休閒').reduce((sum, item) => sum + item.durationMinutes, 0);
-  const previousGameMinutes = previousRecords.filter((item) => item.category === '玩遊戲').reduce((sum, item) => sum + item.durationMinutes, 0);
+
+  const getMinutesByCategory = (records, matcher) =>
+    records.filter((item) => matcher(item.category)).reduce((sum, item) => sum + item.durationMinutes, 0);
+
+  const isStudyCategory = (category = '') => {
+    const normalized = String(category).trim();
+    return ['念書', '唸書', '讀書', '學習', 'study', 'Study'].includes(normalized);
+  };
+
+  const isLeisureOrGameCategory = (category = '') => {
+    const normalized = String(category).trim();
+    return ['休閒', '玩遊戲', '遊戲', '看劇', '娛樂', 'leisure', 'gaming', 'game', 'dramas', 'drama'].includes(normalized);
+  };
+
+  const studyMinutes = getMinutesByCategory(currentRecords, isStudyCategory);
+  const previousStudyMinutes = getMinutesByCategory(previousRecords, isStudyCategory);
+  const leisureGameMinutes = getMinutesByCategory(currentRecords, isLeisureOrGameCategory);
+  const previousLeisureGameMinutes = getMinutesByCategory(previousRecords, isLeisureOrGameCategory);
 
   summaryCards.innerHTML = [
     {
@@ -183,16 +195,16 @@ function renderSummary(currentRecords, previousRecords, compareMode, range) {
       sub: compareMode === 'previous' ? `相較${getRangeLabel(range, true)}：${formatDelta(totalMinutes - previousTotalMinutes)}` : `${currentRecords.length} 筆紀錄`
     },
     {
-      label: '念書時間',
+      label: '唸書時間',
       value: formatDuration(studyMinutes),
       sub: compareMode === 'previous' ? `相較${getRangeLabel(range, true)}：${formatDelta(studyMinutes - previousStudyMinutes)}` : percentOf(studyMinutes, totalMinutes)
     },
     {
       label: '休閒＋遊戲',
-      value: formatDuration(leisureMinutes + gameMinutes),
+      value: formatDuration(leisureGameMinutes),
       sub: compareMode === 'previous'
-        ? `相較${getRangeLabel(range, true)}：${formatDelta(leisureMinutes + gameMinutes - previousLeisureMinutes - previousGameMinutes)}`
-        : percentOf(leisureMinutes + gameMinutes, totalMinutes)
+        ? `相較${getRangeLabel(range, true)}：${formatDelta(leisureGameMinutes - previousLeisureGameMinutes)}`
+        : percentOf(leisureGameMinutes, totalMinutes)
     }
   ].map((card) => `<div class="summary-card"><div class="label">${card.label}</div><div class="value">${card.value}</div><div class="summary-sub">${card.sub}</div></div>`).join('');
 }
