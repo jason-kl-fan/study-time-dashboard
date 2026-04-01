@@ -341,10 +341,10 @@ function createChartOptionsForMobile() {
   const mobile = isMobileView();
   return {
     mobile,
-    barIndexAxis: mobile ? 'y' : 'x',
-    barAspectRatio: mobile ? 1.05 : 2.1,
+    barIndexAxis: 'x',
+    barAspectRatio: mobile ? 1.28 : 2.1,
     barMaxHeight: mobile ? 360 : 420,
-    legendPosition: mobile ? 'bottom' : 'top',
+    legendPosition: 'top',
     legendFontSize: mobile ? 10 : 11,
     pieLabelDisplay: true,
     pieCutout: mobile ? '58%' : '52%'
@@ -530,10 +530,10 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
       indexAxis: mobileOptions.barIndexAxis,
       layout: {
         padding: {
-          top: mobileOptions.mobile ? 18 : 8,
-          right: 8,
-          left: 4,
-          bottom: mobileOptions.mobile ? 12 : 4
+          top: 12,
+          right: 10,
+          left: 6,
+          bottom: 6
         }
       },
       plugins: {
@@ -555,14 +555,11 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
       },
       scales: {
         x: {
-          beginAtZero: true,
-          stacked: isAllPeopleMode && mobileOptions.mobile,
-          grace: '12%',
-          title: { display: !mobileOptions.mobile, text: '分鐘' },
+          offset: true,
           ticks: {
-            autoSkip: true,
+            autoSkip: false,
             maxRotation: 0,
-            padding: 6,
+            padding: 10,
             font: { size: mobileOptions.mobile ? 10 : 11 }
           },
           grid: {
@@ -570,11 +567,10 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
           }
         },
         y: {
-          stacked: isAllPeopleMode && mobileOptions.mobile,
-          offset: true,
+          beginAtZero: true,
+          grace: '12%',
+          title: { display: true, text: '分鐘 / Minutes' },
           ticks: {
-            autoSkip: false,
-            padding: 6,
             font: { size: mobileOptions.mobile ? 10 : 11 }
           },
           grid: {
