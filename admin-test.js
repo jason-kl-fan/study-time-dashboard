@@ -530,10 +530,10 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
       indexAxis: mobileOptions.barIndexAxis,
       layout: {
         padding: {
-          top: 8,
+          top: mobileOptions.mobile ? 18 : 8,
           right: 8,
           left: 4,
-          bottom: 4
+          bottom: mobileOptions.mobile ? 12 : 4
         }
       },
       plugins: {
@@ -571,7 +571,7 @@ function renderCharts(currentRecords, previousRecords, compareMode, range) {
         },
         y: {
           stacked: isAllPeopleMode && mobileOptions.mobile,
-          offset: !mobileOptions.mobile,
+          offset: true,
           ticks: {
             autoSkip: false,
             padding: 6,
